@@ -41,6 +41,13 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./backend
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
+      - name: Get ECR password
+        id: ecr-password
+        run: |
+          PASSWORD=$(aws ecr get-login-password --region $AWS_REGION)
+          echo "ECR_PASSWORD=$PASSWORD" >> $GITHUB_ENV
+          echo "::add-mask::$PASSWORD"
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
@@ -50,8 +57,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            # Use AWS CLI directly (password is auto-masked)
-            aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+            echo "${{ env.ECR_PASSWORD }}" | docker login --username AWS --password-stdin $ECR_REGISTRY
             docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
             docker stop backend-container || true
             docker rm backend-container || true
