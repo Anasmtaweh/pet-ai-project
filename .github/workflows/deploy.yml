@@ -50,9 +50,8 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            # Mask the password using a variable
-            ECR_PASSWORD=$(aws ecr get-login-password --region eu-north-1)
-            echo $ECR_PASSWORD | docker login --username AWS --password-stdin $ECR_REGISTRY
+            # Use AWS CLI directly (password is auto-masked)
+            aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
             docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
             docker stop backend-container || true
             docker rm backend-container || true
