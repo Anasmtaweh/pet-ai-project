@@ -1,0 +1,22 @@
+/* NavigationBar.module.css */
+.navbar {
+    background-color: var(--primary-color);
+    margin-bottom: var(--margin-large);
+}
+
+.navLink {
+    color: var(--background-color);
+}
+
+.navLink:hover {
+    color: #cccccc;
+}
+
+.navbarBrand {
+    font-weight: bold;
+    color: var(--background-color);
+}
+
+.navbarBrand:hover {
+    color: #cccccc;
+}

@@ -1,0 +1,119 @@
+/* PetProfile.module.css */
+.petProfileContainer {
+    background-color: var(--secondary-color);
+    padding: var(--padding-large);
+    border-radius: var(--border-radius-medium);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: var(--margin-large);
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.petProfileTitle {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: var(--margin-large);
+}
+
+.petItem {
+    background-color: var(--background-color);
+    border: 1px solid var(--primary-color);
+    margin-bottom: var(--margin-large);
+    border-radius: var(--border-radius-medium);
+    padding: var(--padding-medium);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.petItem:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.petName {
+    color: var(--text-color);
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: var(--margin-small);
+}
+
+.petInfo {
+    color: var(--text-color);
+    margin-bottom: var(--margin-small);
+    display: flex;
+    align-items: center;
+}
+
+.petInfoContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+}
+
+.deleteButton {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    width: 100%;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.deleteButton:hover {
+    background-color: #b32a38;
+    border-color: #b32a38;
+}
+
+.editButton {
+    background-color: var(--accent-color-1);
+    border-color: var(--accent-color-1);
+    width: 100%;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.editButton:hover {
+    background-color: #804022;
+    border-color: #804022;
+}
+
+.petImage {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin-bottom: var(--margin-medium);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.imageContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.speciesIcon {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+.speciesInfo {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--margin-small);
+}
+
+.speciesName {
+    vertical-align: middle;
+}
+
+.infoIcon {
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+

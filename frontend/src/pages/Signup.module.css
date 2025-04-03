@@ -1,0 +1,54 @@
+/* Signup.module.css */
+
+.signupContainer {
+  background-color: var(--secondary-color); /* Use the same background as login */
+  padding: var(--padding-large); /* Use the same padding as login */
+  border-radius: var(--border-radius-medium); /* Use the same border radius as login */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: var(--margin-large); /* Use the same margin as login */
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.signupTitle {
+  color: var(--primary-color); /* Use the same title color as login */
+  text-align: center;
+  margin-bottom: var(--margin-large); /* Use the same margin as login */
+}
+
+/* Style the form groups */
+.formGroup {
+  margin-bottom: 15px;
+}
+
+/* Style the form labels */
+.formLabel {
+  font-weight: bold;
+}
+
+/* Style the form controls */
+.formControl {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* Style the button */
+.signupButton {
+  background-color: var(--accent-color-1); /* Use the same button color as login */
+  border-color: var(--accent-color-1); /* Use the same button border color as login */
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.signupButton:hover {
+  background-color: #804022; /* Use the same hover color as login */
+  border-color: #804022; /* Use the same hover border color as login */
+}

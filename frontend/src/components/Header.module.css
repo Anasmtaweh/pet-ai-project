@@ -1,0 +1,34 @@
+/* Header.module.css */
+.header {
+    background-color: var(--secondary-color);
+    padding: var(--padding-medium) 0;
+    margin-bottom: var(--margin-large);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.headerContainer {
+    display: flex;
+    align-items: center;
+}
+
+.headerH1 {
+    margin: 0;
+    margin-left: 10px;
+    color: var(--text-color); /* Set the color here */
+}
+
+.header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.headerLink {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.headerLogo {
+    width: 50px; /* Adjust the width as needed */
+    height: auto;
+}

@@ -1,0 +1,44 @@
+/* Login.module.css */
+.loginContainer {
+    background-color: var(--secondary-color);
+    padding: var(--padding-large);
+    border-radius: var(--border-radius-medium);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: var(--margin-large);
+}
+
+.loginTitle {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: var(--margin-large);
+}
+
+.loginButton {
+    background-color: var(--accent-color-1);
+    border-color: var(--accent-color-1);
+}
+
+.loginButton:hover {
+    background-color: #804022; /* Darker shade on hover */
+    border-color: #804022;
+}
+
+/* New button-like styles for the links */
+.linkButton {
+    display: inline-block; /* Make the link behave like a block-level element */
+    background-color: var(--accent-color-2); /* Use a different accent color */
+    color: var(--background-color); /* White text */
+    padding: var(--padding-small) var(--padding-medium); /* Add padding */
+    border-radius: var(--border-radius-small); /* Add rounded corners */
+    text-decoration: none; /* Remove underline */
+    font-weight: 700; /* Make the text bold */
+    transition: background-color 0.3s ease; /* Add a smooth transition */
+    border: none;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.linkButton:hover {
+    background-color: #8FBC8F; /* Darker shade on hover */
+    color: var(--background-color);
+}

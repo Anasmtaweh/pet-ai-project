@@ -1,0 +1,54 @@
+.settingsContainer {
+    background-color: var(--secondary-color);
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+    /* Changes below to make it full width */
+    width: 100%; 
+    max-width: 100%; 
+    margin-left: auto;
+    margin-right: auto;
+}
+
+
+.settingsTitle {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.settingsSection {
+    margin-bottom: 2rem;
+}
+
+.settingsSectionTitle {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    color: var(--text-color);
+}
+
+.saveButton {
+    background-color: var(--accent-color-1);
+    border-color: var(--accent-color-1);
+    padding: 0.8rem 2rem;
+    border-radius: 0.5rem;
+    font-weight: bold;
+}
+
+.saveButton:hover {
+    background-color: #804022;
+    border-color: #804022;
+}
+
+.alert-success,
+.alert-danger {
+    margin-bottom: 1rem;
+}

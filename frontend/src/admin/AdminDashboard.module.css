@@ -1,0 +1,53 @@
+.dashboardContainer {
+    background-color: var(--secondary-color);
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+    width: 100%; /* Take up full width */
+    max-width: 100%; /* Take up full width */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.dashboardTitle {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.dashboardTable {
+    margin-bottom: 2rem;
+}
+
+/* ... (your existing styles) ... */
+
+/* ... (your existing styles) ... */
+
+.recentActivityTitle {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.recentActivityTable {
+    width: 100%;
+    border-collapse: collapse; /* Collapse borders for a cleaner look */
+    margin-bottom: 2rem;
+}
+
+.recentActivityTable th,
+.recentActivityTable td {
+    border: 1px solid #ddd; /* Add a subtle border */
+    padding: 0.5rem;
+    text-align: left; /* Align text to the left */
+}
+
+.recentActivityType {
+    font-weight: bold;
+}
+
+.recentActivityTimestamp {
+    font-size: 0.9rem;
+    color: #777;
+}

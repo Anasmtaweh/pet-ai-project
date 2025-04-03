@@ -1,0 +1,11 @@
+**/frontend/
+**/public/
+**/node_modules/
+.git
+.gitignore
+.dockerignore
+Dockerfile
+*.md
+.env
+dist/
+build/

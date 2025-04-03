@@ -1,0 +1,28 @@
+.petManagementContainer {
+    background-color: var(--secondary-color);
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.petManagementTitle {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.petManagementTable {
+    margin-bottom: 2rem;
+}
+
+.actionButton {
+    padding: 0.5rem 1rem;
+}
+
+.alert-danger {
+    margin-bottom: 1rem;
+}

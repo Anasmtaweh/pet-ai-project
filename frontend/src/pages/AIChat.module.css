@@ -1,0 +1,62 @@
+.aichatContainer {
+    background-color: var(--secondary-color);
+    padding: var(--padding-large);
+    border-radius: var(--border-radius-medium);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: var(--margin-large);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.aichatTitle {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: var(--margin-large);
+}
+
+.chatbox {
+    display: flex;
+    flex-direction: column;
+    height: 300px;
+    overflow-y: auto;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+}
+
+.userMessage {
+    background-color: #e0f7fa; /* Light blue */
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    align-self: flex-end; /* Align to the right */
+    max-width: 70%; /* Prevent messages from taking up full width */
+}
+
+.aiMessage {
+    background-color: #e0f2f7; /* Light gray */
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    align-self: flex-start; /* Align to the left */
+    max-width: 70%; /* Prevent messages from taking up full width */
+}
+
+.inputForm {
+    margin-top: 10px;
+}
+
+.sendButton {
+    background-color: var(--accent-color-1);
+    border-color: var(--accent-color-1);
+}
+
+.sendButton:hover {
+    background-color: #804022;
+    border-color: #804022;
+}
+.messageRole {
+    font-weight: bold;
+    margin-right: 0.5rem;
+}

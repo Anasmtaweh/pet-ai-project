@@ -1,0 +1,21 @@
+/* Footer.module.css */
+.footer {
+    background-color: var(--primary-color);
+    color: var(--background-color);
+    padding: var(--padding-large) 0;
+    margin-top: var(--margin-large);
+}
+
+.footer h5 {
+    color: var(--background-color);
+    margin-bottom: var(--margin-small);
+}
+
+.footer a {
+    color: var(--background-color);
+    text-decoration: none;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}

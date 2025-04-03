@@ -1,0 +1,33 @@
+.userManagementContainer {
+    background-color: var(--secondary-color);
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.userManagementTitle {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.userManagementTable {
+    margin-bottom: 2rem;
+}
+
+.actionButtons {
+    display: flex;
+    gap: 0.5rem; /* Add spacing between buttons */
+}
+
+.actionButton {
+    padding: 0.5rem 1rem; /* Adjust button padding */
+}
+
+.alert-danger {
+    margin-bottom: 1rem;
+}

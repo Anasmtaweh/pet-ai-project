@@ -1,0 +1,79 @@
+/* Scheduler.module.css */
+.schedulerContainer {
+    background-color: var(--secondary-color);
+    padding: var(--padding-large);
+    border-radius: var(--border-radius-medium);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: var(--margin-large);
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.schedulerTitle {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: var(--margin-large);
+}
+
+.addEventButton {
+    background-color: var(--accent-color-1);
+    border-color: var(--accent-color-1);
+    margin-bottom: var(--margin-large);
+}
+
+.addEventButton:hover {
+    background-color: #804022; /* Darker shade on hover */
+    border-color: #804022;
+}
+
+.calendar .rbc-event {
+    background-color: #A0522D;
+    color: white;
+    border-radius: 0px;
+    border: none;
+}
+
+.calendarContainer {
+    margin-bottom: var(--margin-large);
+}
+
+.eventListTitle {
+    color: var(--primary-color);
+    margin-bottom: var(--margin-medium);
+}
+
+.eventList {
+    list-style: none;
+    padding: 0;
+}
+
+.eventListItem {
+    background-color: var(--background-color);
+    border: 1px solid var(--primary-color);
+    border-radius: var(--border-radius-small);
+    padding: var(--padding-medium);
+    margin-bottom: var(--margin-small);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.eventTitle {
+    color: var(--text-color);
+    font-weight: bold;
+}
+
+.eventTime {
+    color: var(--text-color);
+}
+
+.eventButtons {
+    display: flex;
+    gap: var(--margin-small);
+}
+
+/* Remove the unwanted line in the calendar */
+.rbc-time-header-gutter, .rbc-day-slot .rbc-time-slot {
+    border-bottom: none;
+}
