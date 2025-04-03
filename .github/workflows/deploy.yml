@@ -1,0 +1,55 @@
+name: Backend Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'  # Trigger only when backend files change
+
+env:
+  ECR_REGISTRY: 257394484725.dkr.ecr.eu-north-1.amazonaws.com
+  ECR_REPOSITORY: pet-ai-backend
+  AWS_REGION: eu-north-1
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: 13.60.74.169
+          port: 2222  # Your custom SSH port
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Pull and restart the container
+            aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+            docker stop backend-container || true
+            docker rm backend-container || true
+            docker run -d --name backend-container \
+              -p 3001:3001 \
+              -e NODE_ENV=production \
+              $ECR_REGISTRY/$ECR_REPOSITORY:latest
