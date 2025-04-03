@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend/**'  # Trigger only when backend files change
+      - 'backend/**'
 
 env:
   ECR_REGISTRY: 257394484725.dkr.ecr.eu-north-1.amazonaws.com
@@ -24,12 +24,6 @@ jobs:
         with:
           repository: Anasmtaweh/pet-ai-project
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Test file existence
-        run: |
-          ls -la ./backend
-          cat ./backend/Dockerfile
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -55,8 +49,10 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e  # Exit immediately on error
-            aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+            set -e
+            # Mask the password using a variable
+            ECR_PASSWORD=$(aws ecr get-login-password --region eu-north-1)
+            echo $ECR_PASSWORD | docker login --username AWS --password-stdin $ECR_REGISTRY
             docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
             docker stop backend-container || true
             docker rm backend-container || true
