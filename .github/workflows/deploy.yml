@@ -15,11 +15,21 @@ jobs:
   build-deploy:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          repository: Anasmtaweh/pet-ai-project
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Test file existence
+        run: |
+          ls -la ./backend
+          cat ./backend/Dockerfile
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -41,15 +51,17 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           host: 13.60.74.169
-          port: 2222  # Your custom SSH port
+          port: 2222
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Pull and restart the container
+            set -e  # Exit immediately on error
             aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+            docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
             docker stop backend-container || true
             docker rm backend-container || true
-            docker run -d --name backend-container \
+            docker run -d \
+              --name backend-container \
               -p 3001:3001 \
               -e NODE_ENV=production \
               $ECR_REGISTRY/$ECR_REPOSITORY:latest
