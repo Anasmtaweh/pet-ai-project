@@ -1,10 +1,11 @@
 name: Backend Deployment
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'backend/**'
+    push:
+      branches: [main]
+      paths:
+        - 'backend/**'
+    workflow_dispatch:
 
 env:
   ECR_REGISTRY: 257394484725.dkr.ecr.eu-north-1.amazonaws.com
