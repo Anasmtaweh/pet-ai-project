@@ -1,12 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const config = require('./config/config'); // Import config
-const authRoutes = require('./routes/auth'); // Import auth routes
-const petRoutes = require('./routes/pets'); // Import pet routes
-const adminRoutes = require('./routes/admin'); // Import admin routes
-const scheduleRoutes = require('./routes/schedules'); // Import schedule routes
+const config = require('./config/config');
+const authRoutes = require('./routes/auth');
+const petRoutes = require('./routes/pets');
+const adminRoutes = require('./routes/admin');
+const scheduleRoutes = require('./routes/schedules');
 const gptRoutes = require('./routes/gpt');
+const { version } = require('./package.json'); // Get version from package.json
+
 const app = express();
 const port = 3001;
 
@@ -19,24 +21,28 @@ mongoose.connect(config.DB_URL)
     .then(() => console.log('Connected to MongoDB'))
     .catch(err => console.error('Error connecting to MongoDB:', err));
 
+// ========== Add Health Check Endpoint ==========
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        version: version,
+        database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    });
+});
+
 // Routes
 app.get('/', (req, res) => {
-    res.send('Hello from the backend!');
+    res.send('Pet AI Backend Service');
 });
-app.use('/auth', authRoutes); // Use auth routes
-app.use('/pets', petRoutes); // Use pet routes
-app.use('/admin', adminRoutes); // Use admin routes
-app.use('/schedules', scheduleRoutes); // Use schedule routes
-app.use('/gpt', gptRoutes); // Add this line
-// Add new routes for user management
-app.use('/admin/users', adminRoutes);
-app.use('/admin/pets', adminRoutes);
+
+app.use('/auth', authRoutes);
+app.use('/pets', petRoutes);
+app.use('/admin', adminRoutes);
+app.use('/schedules', scheduleRoutes);
+app.use('/gpt', gptRoutes);
 
 // Start the server
 app.listen(port, () => {
     console.log(`Backend server is running on port ${port}`);
 });
-// Test GitHub Actions deployment
-// Test GitHub Actions deployment
-// Test GitHub Actions deployment
-// Test workflow after password masking fix

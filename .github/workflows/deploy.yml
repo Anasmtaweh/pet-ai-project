@@ -70,8 +70,13 @@ jobs:
             docker stop backend-container || true
             docker rm backend-container || true
             docker run -d \
-              --name backend-container \
-              -p 3001:3001 \
-              -e NODE_ENV=production \
-              -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-              $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            --name backend-container \
+            --health-cmd="curl --fail http://localhost:3001/health || exit 1" \
+            --health-interval=30s \
+            --health-retries=3 \
+            --health-start-period=10s \
+            --restart=unless-stopped \
+            -p 3001:3001 \
+            -e NODE_ENV=production \
+            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            $ECR_REGISTRY/$ECR_REPOSITORY:latest
