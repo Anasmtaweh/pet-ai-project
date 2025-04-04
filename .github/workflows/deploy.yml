@@ -1,11 +1,11 @@
 name: Backend Deployment
 
 on:
-    push:
-      branches: [main]
-      paths:
-        - 'backend/**'
-    workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
 
 env:
   ECR_REGISTRY: 257394484725.dkr.ecr.eu-north-1.amazonaws.com
@@ -33,8 +33,7 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         run: |
-          aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
-
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
       - name: Build and push Docker image
         run: |
@@ -45,7 +44,7 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           host: 13.60.74.169  # Your EC2 Public IP
-          port: 2222  # ✅ Make sure to use the correct SSH port
+          port: 2222  # ✅ Use the correct SSH port
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
@@ -58,4 +57,5 @@ jobs:
               --name backend-container \
               -p 3001:3001 \
               -e NODE_ENV=production \
+              -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
               $ECR_REGISTRY/$ECR_REPOSITORY:latest
