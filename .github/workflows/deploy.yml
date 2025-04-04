@@ -44,11 +44,19 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           host: 13.60.74.169  # Your EC2 Public IP
-          port: 2222  # ✅ Use the correct SSH port
+          port: 2222  # Make sure this is the correct SSH port
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-            export AWS_REGION=eu-north-1  # ✅ Explicitly set AWS region
+            export AWS_REGION=eu-north-1
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
-
+            docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            docker stop backend-container || true
+            docker rm backend-container || true
+            docker run -d \
+              --name backend-container \
+              -p 3001:3001 \
+              -e NODE_ENV=production \
+              -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+              $ECR_REGISTRY/$ECR_REPOSITORY:latest
