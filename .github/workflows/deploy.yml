@@ -26,14 +26,14 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: login-ecr
         run: |
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS --password-stdin $ECR_REGISTRY
 
       - name: Build and push Docker image
         run: |
@@ -43,14 +43,28 @@ jobs:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
-          host: 13.60.74.169  # Your EC2 Public IP
-          port: 2222  # Make sure this is the correct SSH port
+          host: 13.60.74.169
+          port: 2222
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY
           script: |
             set -e
-            export AWS_REGION=eu-north-1
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+            # Install AWS CLI if missing
+            if ! command -v aws &> /dev/null; then
+                sudo yum install -y awscli
+            fi
+            
+            # Configure AWS credentials
+            export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
+            export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
+            export AWS_REGION="$AWS_REGION"
+            
+            # Login to ECR
+            aws ecr get-login-password --region $AWS_REGION | \
+            docker login --username AWS --password-stdin $ECR_REGISTRY
+            
+            # Pull and run container
             docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
             docker stop backend-container || true
             docker rm backend-container || true
@@ -58,5 +72,5 @@ jobs:
               --name backend-container \
               -p 3001:3001 \
               -e NODE_ENV=production \
-              -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+              -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
               $ECR_REGISTRY/$ECR_REPOSITORY:latest
