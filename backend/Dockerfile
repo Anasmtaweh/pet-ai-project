@@ -16,7 +16,7 @@ RUN corepack enable && \
     corepack prepare yarn@4.7.0 --activate
 
 # Install production dependencies with frozen lockfile
-RUN yarn install --immutable --production
+RUN yarn install --immutable && yarn workspaces focus --production
 
 # Copy application code
 COPY . .
