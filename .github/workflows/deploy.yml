@@ -50,4 +50,5 @@ jobs:
           script: |
             set -e
             export AWS_REGION=eu-north-1  # ✅ Explicitly set AWS region
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-_
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
