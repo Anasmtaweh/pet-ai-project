@@ -2,7 +2,7 @@
 FROM node:18-alpine
 
 # Install build tools and Python for native dependencies
-RUN apk add --no-cache make gcc g++ python3
+RUN apk add --no-cache make gcc g++ python3 curl
 
 # Configure Yarn before installing dependencies
 WORKDIR /app
