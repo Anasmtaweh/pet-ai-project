@@ -17,7 +17,7 @@ function AdminDashboard() {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const response = await axios.get('http://localhost:3001/admin/dashboard', {
+                const response = await axios.get('http://13.60.74.169:3001/admin/dashboard', {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },

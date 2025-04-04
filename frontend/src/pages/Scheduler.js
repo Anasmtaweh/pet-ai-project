@@ -35,7 +35,7 @@ function Scheduler() {
     useEffect(() => {
         const fetchEvents = async () => {
             try {
-                const response = await axios.get(`http://localhost:3001/schedules/owner/${owner}`);
+                const response = await axios.get(`http://13.60.74.169:3001/schedules/owner/${owner}`);
                 const fetchedEvents = response.data;
                 const generatedEvents = [];
 
@@ -160,7 +160,7 @@ function Scheduler() {
             return;
         }
         try {
-            const response = await axios.post('http://localhost:3001/schedules/add', { ...newEvent, start: newEvent.start.toDate(), end: newEvent.end.toDate(), owner });
+            const response = await axios.post('http://13.60.74.169:3001/schedules/add', { ...newEvent, start: newEvent.start.toDate(), end: newEvent.end.toDate(), owner });
             setEvents(prevEvents => [...prevEvents, { ...response.data, start: new Date(response.data.start), end: new Date(response.data.end) }]);
             handleClose();
         } catch (error) {

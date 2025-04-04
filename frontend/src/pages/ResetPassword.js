@@ -19,7 +19,7 @@ function ResetPassword() {
         setError('');
 
         try {
-            await axios.post(`http://localhost:3001/auth/reset-password/${token}`, { password });
+            await axios.post(`http://13.60.74.169:3001/auth/reset-password/${token}`, { password });
             setMessage('Password reset successfully.');
             setTimeout(() => {
                 navigate('/login');

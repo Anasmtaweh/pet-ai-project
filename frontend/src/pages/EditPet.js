@@ -43,7 +43,7 @@ function EditPet() {
     useEffect(() => {
         const fetchPet = async () => {
             try {
-                const response = await axios.get(`http://localhost:3001/pets/${petId}`);
+                const response = await axios.get(`http://13.60.74.169:3001/pets/${petId}`);
                 const petData = response.data;
                 setName(petData.name);
                 setAgeYears(petData.ageYears);
@@ -97,7 +97,7 @@ function EditPet() {
                 pictures,
             };
 
-            await axios.put(`http://localhost:3001/pets/${petId}`, petData, {
+            await axios.put(`http://13.60.74.169:3001/pets/${petId}`, petData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },

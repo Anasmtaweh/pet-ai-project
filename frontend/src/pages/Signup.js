@@ -29,7 +29,7 @@ function Signup() {
         }
 
         try {
-            const response = await axios.post('http://localhost:3001/auth/signup', {
+            const response = await axios.post('http://13.60.74.169:3001/auth/signup', {
                 email,
                 password,
                 username,

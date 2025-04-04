@@ -17,13 +17,23 @@ const SearchPage = () => {
         setSearchResults([]);
 
         try {
-            // Replace with your SearX instance URL
-            const searxUrl = 'https://searx.example.com/'; 
-            const response = await fetch(`${searxUrl}?q=${encodeURIComponent(searchTerm)}`);
+            // Updated to your EC2 IP and SearX endpoint
+            const searxUrl = 'http://51.21.213.59:8888/search';
+            const response = await fetch(
+                `${searxUrl}?q=${encodeURIComponent(searchTerm)}&format=json`
+            );
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`SearX API error: ${response.status}`);
             }
+            
             const data = await response.json();
+            
+            // Verify the results structure
+            if (!data.results) {
+                throw new Error('Invalid response format from SearX');
+            }
+            
             setSearchResults(data.results);
         } catch (error) {
             setError(error.message);
@@ -50,14 +60,17 @@ const SearchPage = () => {
                 </Button>
             </Form>
             {loading && <p>Searching...</p>}
-            {error && <p className="text-danger">{error}</p>}
+            {error && <p className="text-danger">Error: {error}</p>}
             {searchResults.length > 0 && (
                 <ul className={styles.searchResults}>
                     {searchResults.map((result, index) => (
                         <li key={index}>
                             <a href={result.url} target="_blank" rel="noopener noreferrer">
-                                {result.title}
+                                {result.title || 'Untitled result'}
                             </a>
+                            {result.content && (
+                                <p className={styles.resultSnippet}>{result.content}</p>
+                            )}
                         </li>
                     ))}
                 </ul>

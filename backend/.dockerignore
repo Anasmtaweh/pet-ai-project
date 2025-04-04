@@ -1,10 +1,14 @@
+# .dockerignore (backend/.dockerignore)
+# Allow Yarn config and lockfile
+!.yarnrc.yml
+!yarn.lock
+
+# Ignore everything else unnecessary
 **/frontend/
 **/public/
 **/node_modules/
 .git
 .gitignore
-.dockerignore
-Dockerfile
 *.md
 .env
 dist/

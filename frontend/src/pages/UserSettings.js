@@ -21,7 +21,7 @@ function UserSettings() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                const response = await axios.get('http://localhost:3001/auth/user', {
+                const response = await axios.get('http://13.60.74.169:3001/auth/user', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 const userData = response.data;
@@ -58,7 +58,7 @@ function UserSettings() {
 
         try {
             await axios.put(
-                'http://localhost:3001/auth/settings/password',
+                'http://13.60.74.169:3001/auth/settings/password',
                 { currentPassword, newPassword },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -86,7 +86,7 @@ function UserSettings() {
         }
         try {
             await axios.put(
-                'http://localhost:3001/auth/settings/profile',
+                'http://13.60.74.169:3001/auth/settings/profile',
                 { username: name, age },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
