@@ -7,21 +7,25 @@ const petRoutes = require('./routes/pets');
 const adminRoutes = require('./routes/admin');
 const scheduleRoutes = require('./routes/schedules');
 const gptRoutes = require('./routes/gpt');
-const { version } = require('./package.json'); // Get version from package.json
+const { version } = require('./package.json');
 
 const app = express();
 const port = 3001;
 
-// Middleware
+// Middleware (must come first)
 app.use(express.json());
 app.use(cors());
+
+// Load proxy route AFTER middleware
+const searxProxy = require('./routes/searxProxy');
+app.use('/api', searxProxy);
 
 // Database connection
 mongoose.connect(config.DB_URL)
     .then(() => console.log('Connected to MongoDB'))
     .catch(err => console.error('Error connecting to MongoDB:', err));
 
-// ========== Add Health Check Endpoint ==========
+// Health Check
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'healthy',
@@ -35,7 +39,6 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
     res.send('Pet AI Backend Service');
 });
-
 app.use('/auth', authRoutes);
 app.use('/pets', petRoutes);
 app.use('/admin', adminRoutes);
