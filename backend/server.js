@@ -17,8 +17,7 @@ app.use(express.json());
 app.use(cors());
 
 // Load proxy route AFTER middleware
-const searxProxy = require('./routes/searxProxy');
-app.use('/api', searxProxy);
+
 
 // Database connection
 mongoose.connect(config.DB_URL)
