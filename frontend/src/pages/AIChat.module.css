@@ -1,62 +1,122 @@
+/* AIChat.module.css */
 .aichatContainer {
     background-color: var(--secondary-color);
     padding: var(--padding-large);
     border-radius: var(--border-radius-medium);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     margin-top: var(--margin-large);
-    max-width: 800px;
+    max-width: 800px; /* Keep wider for chat */
     margin-left: auto;
     margin-right: auto;
+    display: flex; /* Enable flexbox for vertical layout */
+    flex-direction: column; /* Stack children vertically */
+    min-height: 70vh; /* Give container some minimum height */
 }
 
 .aichatTitle {
     color: var(--primary-color);
     text-align: center;
-    margin-bottom: var(--margin-large);
+    margin-bottom: var(--margin-medium); /* Reduced margin */
+    flex-shrink: 0; /* Prevent title from shrinking */
 }
 
 .chatbox {
     display: flex;
     flex-direction: column;
-    height: 300px;
-    overflow-y: auto;
-    padding: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 0.5rem;
+    flex-grow: 1; /* Allow chatbox to take up available space */
+    overflow-y: auto; /* Scroll vertically */
+    padding: var(--padding-medium);
+    border: 1px solid var(--primary-color); /* Use theme color */
+    border-radius: var(--border-radius-medium);
+    background-color: var(--background-color); /* White background for chat */
+    margin-bottom: var(--margin-medium);
+    min-height: 300px; /* Ensure minimum chat area */
+}
+
+.userMessage, .aiMessage {
+    padding: var(--padding-small) var(--padding-medium); /* Adjust padding */
+    margin-bottom: var(--margin-small);
+    border-radius: var(--border-radius-large); /* More rounded bubbles */
+    max-width: 75%; /* Max width */
+    word-wrap: break-word; /* Break long words */
+    line-height: 1.4;
 }
 
 .userMessage {
+    /* Consider defining --user-message-bg: #e0f7fa; in index.css */
     background-color: #e0f7fa; /* Light blue */
-    padding: 1rem;
-    margin-bottom: 0.5rem;
-    border-radius: 0.5rem;
     align-self: flex-end; /* Align to the right */
-    max-width: 70%; /* Prevent messages from taking up full width */
+    color: var(--text-color);
+    margin-left: auto; /* Push to the right */
 }
 
 .aiMessage {
-    background-color: #e0f2f7; /* Light gray */
-    padding: 1rem;
-    margin-bottom: 0.5rem;
-    border-radius: 0.5rem;
+    /* Consider defining --ai-message-bg: #f0f0f0; in index.css */
+    background-color: #f0f0f0; /* Lighter gray */
     align-self: flex-start; /* Align to the left */
-    max-width: 70%; /* Prevent messages from taking up full width */
+    color: var(--text-color);
+    margin-right: auto; /* Push to the left */
+}
+
+.messageRole {
+    font-weight: bold;
+    margin-right: var(--margin-small);
+    color: var(--primary-color); /* Optional: Style the role differently */
 }
 
 .inputForm {
-    margin-top: 10px;
+    margin-top: auto; /* Push form to the bottom */
+    flex-shrink: 0; /* Prevent form from shrinking */
+    padding-top: var(--padding-medium); /* Add some space above the form */
+    border-top: 1px solid #eee; /* Optional separator */
+}
+
+/* Style the select dropdown and input field */
+.petSelect, .inputField {
+    /* Inherit general form-control styles from index.css */
+    /* Add specific overrides if needed */
+    margin-bottom: 0; /* Remove default bottom margin if using Row/Col gaps */
 }
 
 .sendButton {
     background-color: var(--accent-color-1);
     border-color: var(--accent-color-1);
+    width: 100%; /* Make button fill column */
 }
 
 .sendButton:hover {
     background-color: #804022;
     border-color: #804022;
 }
-.messageRole {
-    font-weight: bold;
-    margin-right: 0.5rem;
+
+.sendButton:disabled {
+    background-color: #cccccc;
+    border-color: #cccccc;
+    cursor: not-allowed;
 }
+
+.loadingIndicator {
+    text-align: center;
+    padding: var(--padding-small);
+    color: var(--text-color);
+    font-style: italic;
+}
+
+.errorMessage {
+    margin-top: var(--margin-small);
+    text-align: center;
+}
+
+/* Responsive adjustments if needed */
+@media (max-width: 767px) {
+    .inputForm .col-md-4,
+    .inputForm .col-md-6,
+    .inputForm .col-md-2 {
+        margin-bottom: var(--margin-small); /* Add space between elements on small screens */
+    }
+    .inputForm .d-grid {
+        padding-left: 0; /* Adjust padding for button column if needed */
+        padding-right: 0;
+    }
+}
+

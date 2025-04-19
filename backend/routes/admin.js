@@ -75,12 +75,47 @@ router.delete('/users/:id', adminMiddleware, async (req, res) => {
 // Update user status
 router.put('/users/:id', adminMiddleware, async (req, res) => {
     try {
+        const userId = req.params.id;
+        // 1. Explicitly check the request body
         const { isActive } = req.body;
-        await User.findByIdAndUpdate(req.params.id, { isActive });
-        res.json({ message: 'User status updated' });
+
+        // 2. Add Detailed Logging
+        console.log(`--- Updating User Status ---`);
+        console.log(`User ID: ${userId}`);
+        console.log(`Received Request Body:`, req.body);
+        console.log(`Value received for isActive: ${isActive}`);
+        console.log(`Type of isActive received: ${typeof isActive}`);
+
+        // 3. Validate the received value (optional but good practice)
+        if (typeof isActive !== 'boolean') {
+            console.error("Invalid data type received for isActive. Expected boolean.");
+            return res.status(400).json({ message: 'Invalid value provided for isActive status. Must be true or false.' });
+        }
+
+        // 4. Perform the update using the received value
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { isActive: isActive }, // Use the value directly from req.body
+            { new: true } // Option to return the modified document
+        );
+
+        // 5. Check if the user was found and updated
+        if (!updatedUser) {
+            console.log(`User with ID ${userId} not found for update.`);
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // 6. Log the result
+        console.log(`User ${userId} status successfully updated in DB. New status:`, updatedUser.isActive);
+        console.log(`--- End Update User Status ---`);
+
+        // 7. Send response
+        res.json({ message: 'User status updated successfully', user: updatedUser }); // Optionally send back updated user data
+
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        // Log any errors during the process
+        console.error(`Error updating status for user ${req.params.id}:`, error);
+        res.status(500).json({ message: 'Server error occurred while updating user status' });
     }
 });
 // Get all pets with owner names

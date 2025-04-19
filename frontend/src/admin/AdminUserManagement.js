@@ -56,19 +56,27 @@ function AdminUserManagement() {
         }
     };
 
-    const handleToggleStatus = async (userId, isActive) => {
+    // --- CORRECTED FUNCTION ---
+    const handleToggleStatus = async (userId, currentIsActive) => { // Renamed variable for clarity
+        const newIsActive = !currentIsActive; // Calculate the desired new state
         try {
-            await axios.put(`https://mishtika.duckdns.org/admin/users/${userId}`, { isActive }, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            // Send the NEW desired state to the backend
+            await axios.put(`https://mishtika.duckdns.org/admin/users/${userId}`,
+                { isActive: newIsActive }, // Send the opposite of the current status
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+            // Update local state to reflect the change
             setUsers(users.map((user) =>
-                user._id === userId ? { ...user, isActive: !user.isActive } : user
+                user._id === userId ? { ...user, isActive: newIsActive } : user
             ));
         } catch (err) {
             console.error('Error toggling user status:', err);
             setError(err.response?.data?.message || 'An error occurred while toggling user status.');
         }
     };
+    // --- END OF CORRECTION ---
 
     return (
         <Container className={styles.userManagementContainer}>
@@ -99,6 +107,7 @@ function AdminUserManagement() {
                                     variant={user.isActive ? 'warning' : 'success'}
                                     size='sm'
                                     className={`${styles.actionButton} ms-2`}
+                                    // Pass the user's current isActive status to the handler
                                     onClick={() => handleToggleStatus(user._id, user.isActive)}
                                 >
                                     {user.isActive ? 'Deactivate' : 'Activate'}
@@ -124,9 +133,8 @@ function AdminUserManagement() {
                 </Modal.Footer>
             </Modal>
         </Container>
-        
+
     );
 }
 
 export default AdminUserManagement;
-
