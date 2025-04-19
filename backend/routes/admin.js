@@ -75,19 +75,13 @@ router.delete('/users/:id', adminMiddleware, async (req, res) => {
 // Update user status
 router.put('/users/:id', adminMiddleware, async (req, res) => {
     const userId = req.params.id;
-    const { isActive: requestedStatus } = req.body; // Get the requested status from body
+    // We still receive the body but will ignore isActive for now
+    const { isActive: requestedStatus } = req.body;
 
-    // Keep console logs for debugging on EC2 if possible later
-    console.log(`--- Updating User Status (Using .save()) ---`);
+    console.log(`--- DIAGNOSTIC: Forcing User Status to FALSE ---`);
     console.log(`User ID: ${userId}`);
-    console.log(`Received Request Body:`, req.body);
-    console.log(`Requested isActive status: ${requestedStatus} (Type: ${typeof requestedStatus})`);
-
-    // Validate the received value
-    if (typeof requestedStatus !== 'boolean') {
-        console.error("Invalid data type received for isActive. Expected boolean.");
-        return res.status(400).json({ message: 'Invalid value provided for isActive status. Must be true or false.' });
-    }
+    console.log(`Received Request Body (for reference):`, req.body); // Log what was sent
+    console.log(`Requested isActive status (ignored): ${requestedStatus}`);
 
     let initialStatus = null;
     let finalStatus = null;
@@ -107,40 +101,41 @@ router.put('/users/:id', adminMiddleware, async (req, res) => {
         initialStatus = userToUpdate.isActive; // Get status before change
         console.log(`Initial status found in DB: ${initialStatus}`);
 
-        // 2. Modify the document in memory
-        userToUpdate.isActive = requestedStatus;
-        console.log(`Attempting to set isActive to: ${userToUpdate.isActive}`);
+        // 2. --- FORCE THE VALUE TO FALSE ---
+        console.log(`!!! DIAGNOSTIC: Hardcoding isActive to false before save !!!`);
+        userToUpdate.isActive = false; // <--- HARDCODING TO FALSE HERE
+        // ------------------------------------
 
         // 3. Save the modified document
-        const savedUser = await userToUpdate.save(); // This triggers 'save' middleware (but only password hook if password changed)
+        const savedUser = await userToUpdate.save();
 
         // 4. Check the status *after* saving
         finalStatus = savedUser.isActive;
-        console.log(`Status after .save() attempt: ${finalStatus}`);
+        console.log(`Status after .save() attempt (forced false): ${finalStatus}`);
 
-        console.log(`--- End Update User Status (Using .save()) ---`);
+        console.log(`--- End DIAGNOSTIC ---`);
 
         // 5. Send detailed response back to frontend
         res.json({
-            message: 'User status update attempted using .save()',
+            message: 'DIAGNOSTIC: User status update FORCED to false',
             userId: userId,
             userFound: userFound,
-            requestedStatus: requestedStatus,
+            requestedStatus: requestedStatus, // Still report what was requested
             initialStatus: initialStatus,
             finalStatus: finalStatus, // Status according to the saved document
-            saveError: null // No specific save error caught here, handled by catch block
+            saveError: null
         });
 
     } catch (error) {
         // Log any errors during the find or save process
-        console.error(`Error processing status update for user ${userId} using .save():`, error);
+        console.error(`DIAGNOSTIC Error processing forced status update for user ${userId}:`, error);
         saveError = error.message;
         res.status(500).json({
-             message: 'Server error occurred during status update using .save()',
+             message: 'Server error during DIAGNOSTIC forced update',
              userId: userId,
-             userFound: userFound, // Might be true even if save failed
+             userFound: userFound,
              requestedStatus: requestedStatus,
-             initialStatus: initialStatus, // Might be null if findById failed
+             initialStatus: initialStatus,
              finalStatus: initialStatus, // Assume no change if save failed
              saveError: saveError
         });
