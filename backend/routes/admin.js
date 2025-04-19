@@ -75,13 +75,19 @@ router.delete('/users/:id', adminMiddleware, async (req, res) => {
 // Update user status
 router.put('/users/:id', adminMiddleware, async (req, res) => {
     const userId = req.params.id;
-    // We still receive the body but will ignore isActive for now
-    const { isActive: requestedStatus } = req.body;
+    const { isActive: requestedStatus } = req.body; // Get the requested status from body
 
-    console.log(`--- DIAGNOSTIC: Forcing User Status to FALSE ---`);
+    // Keep console logs for debugging on EC2 if possible later
+    console.log(`--- Updating User Status (Using .save()) ---`);
     console.log(`User ID: ${userId}`);
-    console.log(`Received Request Body (for reference):`, req.body); // Log what was sent
-    console.log(`Requested isActive status (ignored): ${requestedStatus}`);
+    console.log(`Received Request Body:`, req.body);
+    console.log(`Requested isActive status: ${requestedStatus} (Type: ${typeof requestedStatus})`);
+
+    // Validate the received value
+    if (typeof requestedStatus !== 'boolean') {
+        console.error("Invalid data type received for isActive. Expected boolean.");
+        return res.status(400).json({ message: 'Invalid value provided for isActive status. Must be true or false.' });
+    }
 
     let initialStatus = null;
     let finalStatus = null;
@@ -101,26 +107,25 @@ router.put('/users/:id', adminMiddleware, async (req, res) => {
         initialStatus = userToUpdate.isActive; // Get status before change
         console.log(`Initial status found in DB: ${initialStatus}`);
 
-        // 2. --- FORCE THE VALUE TO FALSE ---
-        console.log(`!!! DIAGNOSTIC: Hardcoding isActive to false before save !!!`);
-        userToUpdate.isActive = false; // <--- HARDCODING TO FALSE HERE
-        // ------------------------------------
+        // 2. Modify the document in memory USING THE REQUESTED STATUS
+        console.log(`Attempting to set isActive to: ${requestedStatus}`);
+        userToUpdate.isActive = requestedStatus; // <--- USE THE VALUE FROM req.body
 
         // 3. Save the modified document
         const savedUser = await userToUpdate.save();
 
         // 4. Check the status *after* saving
         finalStatus = savedUser.isActive;
-        console.log(`Status after .save() attempt (forced false): ${finalStatus}`);
+        console.log(`Status after .save() attempt: ${finalStatus}`);
 
-        console.log(`--- End DIAGNOSTIC ---`);
+        console.log(`--- End Update User Status (Using .save()) ---`);
 
         // 5. Send detailed response back to frontend
         res.json({
-            message: 'DIAGNOSTIC: User status update FORCED to false',
+            message: 'User status update attempted using .save()',
             userId: userId,
             userFound: userFound,
-            requestedStatus: requestedStatus, // Still report what was requested
+            requestedStatus: requestedStatus,
             initialStatus: initialStatus,
             finalStatus: finalStatus, // Status according to the saved document
             saveError: null
@@ -128,10 +133,10 @@ router.put('/users/:id', adminMiddleware, async (req, res) => {
 
     } catch (error) {
         // Log any errors during the find or save process
-        console.error(`DIAGNOSTIC Error processing forced status update for user ${userId}:`, error);
+        console.error(`Error processing status update for user ${userId} using .save():`, error);
         saveError = error.message;
         res.status(500).json({
-             message: 'Server error during DIAGNOSTIC forced update',
+             message: 'Server error occurred during status update using .save()',
              userId: userId,
              userFound: userFound,
              requestedStatus: requestedStatus,
