@@ -2,7 +2,7 @@ const DB_URL = 'mongodb+srv://anas:BLACKDEVIL69@petmanagment.dyd4r.mongodb.net/p
 const EMAIL_USER = 'anasanasmtaweh@gmail.com';
 const EMAIL_PASS = 'rqxv xbug alvy jxxx';
 // config/config.js
-require('dotenv').config();
+
 
 
 
