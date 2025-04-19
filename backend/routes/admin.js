@@ -77,7 +77,8 @@ router.put('/users/:id', adminMiddleware, async (req, res) => {
     const userId = req.params.id;
     const { isActive: requestedStatus } = req.body; // Get the requested status from body
 
-    console.log(`--- Updating User Status (Revised) ---`);
+    // Keep console logs for debugging on EC2 if possible later
+    console.log(`--- Updating User Status (Using .save()) ---`);
     console.log(`User ID: ${userId}`);
     console.log(`Received Request Body:`, req.body);
     console.log(`Requested isActive status: ${requestedStatus} (Type: ${typeof requestedStatus})`);
@@ -91,59 +92,57 @@ router.put('/users/:id', adminMiddleware, async (req, res) => {
     let initialStatus = null;
     let finalStatus = null;
     let userFound = false;
-    let updateError = null;
+    let saveError = null;
 
     try {
-        // 1. Find the user first to get the initial status
-        const userBeforeUpdate = await User.findById(userId).select('isActive'); // Only select isActive field
+        // 1. Find the user document
+        const userToUpdate = await User.findById(userId);
 
-        if (!userBeforeUpdate) {
-            console.log(`User with ID ${userId} not found before update attempt.`);
+        if (!userToUpdate) {
+            console.log(`User with ID ${userId} not found.`);
             return res.status(404).json({ message: 'User not found' });
         }
 
         userFound = true;
-        initialStatus = userBeforeUpdate.isActive;
+        initialStatus = userToUpdate.isActive; // Get status before change
         console.log(`Initial status found in DB: ${initialStatus}`);
 
-        // 2. Perform the update using the requested status
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { isActive: requestedStatus }, // Use the value directly from req.body
-            { new: true } // Return the modified document
-        );
+        // 2. Modify the document in memory
+        userToUpdate.isActive = requestedStatus;
+        console.log(`Attempting to set isActive to: ${userToUpdate.isActive}`);
 
-        // Check if the update command returned a user (it should if findById found one)
-        if (!updatedUser) {
-             // This case is less likely if userBeforeUpdate was found, but good to check
-             console.error(`Update command did not return user ${userId}, though found initially.`);
-             updateError = 'Update command failed unexpectedly after user was found.';
-             // We might not have the finalStatus if updatedUser is null
-             finalStatus = initialStatus; // Assume no change if update failed
-        } else {
-            finalStatus = updatedUser.isActive;
-            console.log(`Status after update attempt (from updatedUser): ${finalStatus}`);
-        }
+        // 3. Save the modified document
+        const savedUser = await userToUpdate.save(); // This triggers 'save' middleware (but only password hook if password changed)
 
-        console.log(`--- End Update User Status (Revised) ---`);
+        // 4. Check the status *after* saving
+        finalStatus = savedUser.isActive;
+        console.log(`Status after .save() attempt: ${finalStatus}`);
 
-        // 3. Send detailed response back to frontend
+        console.log(`--- End Update User Status (Using .save()) ---`);
+
+        // 5. Send detailed response back to frontend
         res.json({
-            message: updateError ? 'Error during update' : 'User status update attempted',
+            message: 'User status update attempted using .save()',
             userId: userId,
             userFound: userFound,
             requestedStatus: requestedStatus,
             initialStatus: initialStatus,
-            finalStatus: finalStatus, // Status according to the updated document returned by Mongoose
-            updateError: updateError // Include any specific update error message
+            finalStatus: finalStatus, // Status according to the saved document
+            saveError: null // No specific save error caught here, handled by catch block
         });
 
     } catch (error) {
-        // Log any errors during the process
-        console.error(`Error processing status update for user ${userId}:`, error);
+        // Log any errors during the find or save process
+        console.error(`Error processing status update for user ${userId} using .save():`, error);
+        saveError = error.message;
         res.status(500).json({
-             message: 'Server error occurred during status update',
-             error: error.message // Send back the error message
+             message: 'Server error occurred during status update using .save()',
+             userId: userId,
+             userFound: userFound, // Might be true even if save failed
+             requestedStatus: requestedStatus,
+             initialStatus: initialStatus, // Might be null if findById failed
+             finalStatus: initialStatus, // Assume no change if save failed
+             saveError: saveError
         });
     }
 });
