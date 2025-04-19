@@ -1,4 +1,4 @@
-require('dotenv').config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -12,13 +12,6 @@ const { version } = require('./package.json');
 
 const app = express();
 const port = 3001;
-const corsOptions = {
-    origin: 'http://mishtika-frontend.s3-website.eu-north-1.amazonaws.com',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type'],
-};
-
-app.use(cors(corsOptions));
 
 // Middleware (must come first)
 app.use(express.json());
