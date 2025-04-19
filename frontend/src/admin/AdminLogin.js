@@ -23,7 +23,7 @@ function AdminLogin() {
         setError('');
 
         try {
-            const response = await axios.post('http://13.60.74.169:3001/auth/login', {
+            const response = await axios.post('https://mishtika.duckdns.org/auth/login', {
                 email,
                 password,
             });

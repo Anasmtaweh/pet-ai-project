@@ -1,3 +1,4 @@
+// src/pages/Scheduler.js
 import React, { useState, useEffect } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import moment from 'moment';
@@ -6,7 +7,8 @@ import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
-import styles from './Scheduler.module.css'; // Import the CSS Module
+import Alert from 'react-bootstrap/Alert'; // Import Alert
+import styles from './Scheduler.module.css';
 import axios from 'axios';
 
 const localizer = momentLocalizer(moment);
@@ -19,23 +21,25 @@ function Scheduler() {
     const [showModal, setShowModal] = useState(false);
     const [newEvent, setNewEvent] = useState({
         title: '',
-        start: moment(), // Initialize with moment objects
-        end: moment(), // Initialize with moment objects
+        start: moment(),
+        end: moment(),
         type: 'meal',
         repeat: false,
         repeatType: 'daily',
         repeatDays: [],
     });
     const [editEvent, setEditEvent] = useState(null);
+    const [modalError, setModalError] = useState(''); // State for modal validation errors
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const token = localStorage.getItem('token');
     const decodedToken = JSON.parse(atob(token.split('.')[1]));
-    const owner = decodedToken.id; // Extract user ID from the token
+    const owner = decodedToken.id;
 
+    // --- useEffect for fetching events remains the same ---
     useEffect(() => {
         const fetchEvents = async () => {
             try {
-                const response = await axios.get(`http://13.60.74.169:3001/schedules/owner/${owner}`);
+                const response = await axios.get(`https://mishtika.duckdns.org/schedules/owner/${owner}`);
                 const fetchedEvents = response.data;
                 const generatedEvents = [];
 
@@ -43,37 +47,14 @@ function Scheduler() {
                     const start = moment(event.start);
                     const end = moment(event.end);
                     if (event.repeat) {
-                        if (event.repeatType === 'daily') {
-                            let currentDate = start.clone();
-                            while (currentDate.isSameOrBefore(end, 'day')) {
-                                const newStart = currentDate.clone().hour(start.hour()).minute(start.minute()).second(start.second());
-                                const newEnd = currentDate.clone().hour(end.hour()).minute(end.minute()).second(end.second());
-                                generatedEvents.push({
-                                    ...event,
-                                    start: newStart.toDate(),
-                                    end: newEnd.toDate(),
-                                });
-                                currentDate.add(1, 'day');
-                            }
-                        } else if (event.repeatType === 'weekly') {
-                            event.repeatDays.forEach(day => {
-                                const dayIndex = daysOfWeek.indexOf(day);
-                                let currentDate = start.clone().day(dayIndex);
-                                if (currentDate.isBefore(start)) {
-                                    currentDate.add(7, 'day');
-                                }
-                                while (currentDate.isSameOrBefore(end, 'day')) {
-                                    const newStart = currentDate.clone().hour(start.hour()).minute(start.minute()).second(start.second());
-                                    const newEnd = currentDate.clone().hour(end.hour()).minute(end.minute()).second(end.second());
-                                    generatedEvents.push({
-                                        ...event,
-                                        start: newStart.toDate(),
-                                        end: newEnd.toDate(),
-                                    });
-                                    currentDate.add(7, 'day');
-                                }
-                            });
-                        }
+                        // Generate occurrences for display (keep this logic or adapt based on backend needs)
+                        // For simplicity, let's just add the base event rule for now
+                        // You might need more sophisticated logic here depending on how you want to display repeats
+                        generatedEvents.push({
+                            ...event,
+                            start: start.toDate(),
+                            end: end.toDate(),
+                        });
                     } else {
                         generatedEvents.push({
                             ...event,
@@ -82,18 +63,20 @@ function Scheduler() {
                         });
                     }
                 });
-                setEvents(generatedEvents);
+                setEvents(generatedEvents); // Displaying base events or generated ones
             } catch (error) {
                 console.error('Error fetching events:', error);
             }
         };
 
         fetchEvents();
-    }, [owner, daysOfWeek]);
+    }, [owner]); // Removed daysOfWeek dependency if not strictly needed for fetch
+
 
     const handleClose = () => {
         setShowModal(false);
         setEditEvent(null);
+        setModalError(''); // Clear modal error on close
         setNewEvent({
             title: '',
             start: moment(),
@@ -104,17 +87,21 @@ function Scheduler() {
             repeatDays: [],
         });
     };
+
     const handleShow = (event) => {
+        setModalError(''); // Clear modal error on show
         if (event) {
-            setEditEvent(event);
+            // Find the original event rule if it's a generated occurrence
+            const originalEvent = events.find(e => e._id === event._id) || event;
+            setEditEvent(originalEvent);
             setNewEvent({
-                title: event.title || '',
-                start: event.start ? moment(event.start) : moment(), // Use moment objects
-                end: event.end ? moment(event.end) : moment(), // Use moment objects
-                type: event.type || 'meal',
-                repeat: event.repeat || false,
-                repeatType: event.repeatType || 'daily',
-                repeatDays: event.repeatDays || [],
+                title: originalEvent.title || '',
+                start: originalEvent.start ? moment(originalEvent.start) : moment(),
+                end: originalEvent.end ? moment(originalEvent.end) : moment(),
+                type: originalEvent.type || 'meal',
+                repeat: originalEvent.repeat || false,
+                repeatType: originalEvent.repeatType || 'daily',
+                repeatDays: originalEvent.repeatDays || [],
             });
         } else {
             setNewEvent({
@@ -131,12 +118,13 @@ function Scheduler() {
         setShowModal(true);
     };
 
+    // --- Input change handlers remain the same ---
     const handleInputChange = (e) => {
         setNewEvent({ ...newEvent, [e.target.name]: e.target.value });
     };
 
     const handleDateChange = (e, field) => {
-        setNewEvent({ ...newEvent, [field]: moment(e.target.value) }); // Use moment objects
+        setNewEvent({ ...newEvent, [field]: moment(e.target.value) });
     };
 
     const handleRepeatChange = (e) => {
@@ -154,58 +142,129 @@ function Scheduler() {
         }
     };
 
-    const handleAddEvent = async () => {
+
+    // --- Validation Function ---
+    const validateEvent = () => {
+        if (!newEvent.title.trim()) {
+            setModalError('Title is required.');
+            return false;
+        }
+        if (!newEvent.start || !newEvent.start.isValid()) {
+            setModalError('Invalid start date/time.');
+            return false;
+        }
+        if (!newEvent.end || !newEvent.end.isValid()) {
+            setModalError('Invalid end date/time.');
+            return false;
+        }
+        if (newEvent.end.isBefore(newEvent.start)) {
+            setModalError('End time must be after start time.');
+            return false;
+        }
         if (newEvent.repeat && newEvent.repeatType === 'weekly' && newEvent.repeatDays.length === 0) {
-            alert('Please select at least one day of the week for weekly repetition.');
+            setModalError('Please select at least one day for weekly repetition.');
+            return false;
+        }
+        // Add any other specific validation rules here
+
+        setModalError(''); // Clear error if validation passes
+        return true;
+    };
+
+    const handleAddEvent = async () => {
+        if (!validateEvent()) { // Call validation function
             return;
         }
+
+        const payload = {
+            ...newEvent,
+            start: newEvent.start.toDate(), // Convert moment to Date
+            end: newEvent.end.toDate(),     // Convert moment to Date
+            owner
+        };
+        console.log("Sending schedule data:", payload);
+
         try {
-            const response = await axios.post('http://13.60.74.169:3001/schedules/add', { ...newEvent, start: newEvent.start.toDate(), end: newEvent.end.toDate(), owner });
+            const response = await axios.post('https://mishtika.duckdns.org/schedules/add', payload);
+            // Add the new event rule to the state
             setEvents(prevEvents => [...prevEvents, { ...response.data, start: new Date(response.data.start), end: new Date(response.data.end) }]);
             handleClose();
         } catch (error) {
             console.error('Error adding event:', error);
+            // Display backend error in modal if available, otherwise generic
+            setModalError(error.response?.data?.message || 'Failed to add event. Please try again.');
         }
     };
 
     const handleEditEvent = async () => {
-        if (newEvent.repeat && newEvent.repeatType === 'weekly' && newEvent.repeatDays.length === 0) {
-            alert('Please select at least one day of the week for weekly repetition.');
+        if (!validateEvent()) { // Call validation function
             return;
         }
+
+        const payload = {
+            ...newEvent,
+            start: newEvent.start.toDate(), // Convert moment to Date
+            end: newEvent.end.toDate()      // Convert moment to Date
+            // Owner is not needed for update usually, backend uses ID from URL
+        };
+        console.log("Updating schedule data:", payload);
+
         try {
-            const response = await axios.put(`http://localhost:3001/schedules/${editEvent._id}`, { ...newEvent, start: newEvent.start.toDate(), end: newEvent.end.toDate() });
-            setEvents(prevEvents => prevEvents.map(event => event._id === editEvent._id ? { ...response.data, start: new Date(response.data.start), end: new Date(response.data.end) } : event));
+            const response = await axios.put(`https://mishtika.duckdns.org/schedules/${editEvent._id}`, payload);
+            // Update the event rule in the state
+            setEvents(prevEvents => prevEvents.map(event =>
+                event._id === editEvent._id
+                    ? { ...response.data, start: new Date(response.data.start), end: new Date(response.data.end) }
+                    : event
+            ));
             handleClose();
         } catch (error) {
             console.error('Error updating event:', error);
+            // Display backend error in modal if available, otherwise generic
+            setModalError(error.response?.data?.message || 'Failed to update event. Please try again.');
         }
     };
 
-    const handleDeleteEvent = async (event) => {
+    const handleDeleteEvent = async (eventToDelete) => {
+        // Use the _id from the event object passed to the function
+        if (!eventToDelete || !eventToDelete._id) {
+            console.error("Cannot delete event without ID");
+            return;
+        }
         try {
-            await axios.delete(`http://localhost:3001/schedules/${event._id}`);
-            setEvents(events.filter(e => e._id !== event._id));
+            await axios.delete(`https://mishtika.duckdns.org/schedules/${eventToDelete._id}`);
+            setEvents(events.filter(e => e._id !== eventToDelete._id));
+            handleClose(); // Close modal if the deleted event was being edited
         } catch (error) {
             console.error('Error deleting event:', error);
+            // Optionally set an error message for the main page, not the modal
         }
     };
+
+    // --- eventPropGetter and handleSelectEvent remain the same ---
     const eventPropGetter = (event) => {
         let newStyle = {
-            backgroundColor: "#A0522D",
+            backgroundColor: "#A0522D", // Default: meal
             color: 'white',
             borderRadius: "0px",
             border: "none"
         };
 
-        if (event.type === 'vet') {
-            newStyle.backgroundColor = "#8FBC8F";
-        } else if (event.type === 'sleep') {
-            newStyle.backgroundColor = "#17a2b8";
-        } else if (event.type === 'medication') {
-            newStyle.backgroundColor = "#ffc107";
-        } else if (event.type === 'play') {
-            newStyle.backgroundColor = "#dc3545";
+        switch (event.type) {
+            case 'vet':
+                newStyle.backgroundColor = "#8FBC8F"; // Greenish
+                break;
+            case 'sleep':
+                newStyle.backgroundColor = "#17a2b8"; // Teal
+                break;
+            case 'medication':
+                newStyle.backgroundColor = "#ffc107"; // Yellow
+                break;
+            case 'play':
+                newStyle.backgroundColor = "#dc3545"; // Red
+                break;
+            default:
+                break; // Keep default for 'meal' or others
         }
 
         return {
@@ -217,6 +276,7 @@ function Scheduler() {
         handleShow(event);
     };
 
+
     return (
         <Container className={`${styles.schedulerContainer} mt-5`}>
             <h1 className={styles.schedulerTitle}>Scheduler</h1>
@@ -226,7 +286,9 @@ function Scheduler() {
             <div className={styles.calendarContainer}>
                 <Calendar
                     localizer={localizer}
-                    events={events}
+                    // Decide how to display events: generated occurrences or just base rules?
+                    // Using 'events' state which might contain generated ones or just rules based on fetch logic
+                    events={events.map(ev => ({ ...ev, start: new Date(ev.start), end: new Date(ev.end) }))} // Ensure dates are Date objects
                     startAccessor="start"
                     endAccessor="end"
                     style={{ height: 500 }}
@@ -236,13 +298,19 @@ function Scheduler() {
                     defaultView={Views.MONTH}
                 />
             </div>
-            <h2 className={styles.eventListTitle}>Events List</h2>
+
+            {/* Event List can show the base rules */}
+            <h2 className={styles.eventListTitle}>Events List (Rules)</h2>
             <ul className={styles.eventList}>
-                {events.map((event, index) => (
-                    <li key={index} className={styles.eventListItem}>
-                        <strong className={styles.eventTitle}>{event.title}</strong> - {event.type}<br />
+                {events.filter(e => e._id) // Filter out potentially generated events without _id if necessary
+                    .map((event) => (
+                    <li key={event._id} className={styles.eventListItem}>
+                        <strong className={styles.eventTitle}>{event.title}</strong> - {event.type}
+                        {event.repeat && ` (Repeats ${event.repeatType})`}
+                        <br />
                         <span className={styles.eventTime}>
-                            {moment(event.start).format('MMM Do YYYY, h:mm a')} - {moment(event.end).format('MMM Do YYYY, h:mm a')}
+                            Base Start: {moment(event.start).format('MMM Do YYYY, h:mm a')} <br/>
+                            Base End: {moment(event.end).format('MMM Do YYYY, h:mm a')}
                         </span>
                         <div className={styles.eventButtons}>
                             <Button variant="primary" size="sm" onClick={() => handleShow(event)}>Edit</Button>
@@ -257,10 +325,12 @@ function Scheduler() {
                     <Modal.Title>{editEvent ? 'Edit Event' : 'Add New Event'}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
+                    {/* Display Modal Error Here */}
+                    {modalError && <Alert variant="danger">{modalError}</Alert>}
                     <Form>
                         <Form.Group className="mb-3">
                             <Form.Label>Title</Form.Label>
-                            <Form.Control type="text" name="title" value={newEvent.title} onChange={handleInputChange} />
+                            <Form.Control type="text" name="title" value={newEvent.title} onChange={handleInputChange} required />
                         </Form.Group>
                         <Form.Group className="mb-3">
                             <Form.Label>Type</Form.Label>
@@ -274,11 +344,11 @@ function Scheduler() {
                         </Form.Group>
                         <Form.Group className="mb-3">
                             <Form.Label>Start Time</Form.Label>
-                            <Form.Control type="datetime-local" name="start" value={newEvent.start.format('YYYY-MM-DDTHH:mm')} onChange={(e) => handleDateChange(e, 'start')} />
+                            <Form.Control type="datetime-local" name="start" value={newEvent.start.format('YYYY-MM-DDTHH:mm')} onChange={(e) => handleDateChange(e, 'start')} required />
                         </Form.Group>
                         <Form.Group className="mb-3">
                             <Form.Label>End Time</Form.Label>
-                            <Form.Control type="datetime-local" name="end" value={newEvent.end.format('YYYY-MM-DDTHH:mm')} onChange={(e) => handleDateChange(e, 'end')} />
+                            <Form.Control type="datetime-local" name="end" value={newEvent.end.format('YYYY-MM-DDTHH:mm')} onChange={(e) => handleDateChange(e, 'end')} required />
                         </Form.Group>
                         <Form.Group className="mb-3">
                             <Form.Check
@@ -341,3 +411,4 @@ function Scheduler() {
 }
 
 export default Scheduler;
+

@@ -46,7 +46,7 @@ function NavigationBar() {
                                     <Nav.Link as={Link} to="/petprofile" className={styles.navLink}>Pet Profile</Nav.Link> {/* Apply the CSS Module class */}
                                     <Nav.Link as={Link} to="/petform" className={styles.navLink}>Add Pet</Nav.Link> {/* Apply the CSS Module class */}
                                     <Nav.Link as={Link} to="/aichat" className={styles.navLink}>AI Chat</Nav.Link> {/* Apply the CSS Module class */}
-                                    <Nav.Link as={Link} to="/search" className={styles.navLink}>Search</Nav.Link>
+                                    
 
                                     <Nav.Link as={Link} to="/scheduler" className={styles.navLink}>Scheduler</Nav.Link> {/* Apply the CSS Module class */}
                                     <Nav.Link as={Link} to="/usersettings" className={styles.navLink}>Settings</Nav.Link> {/* Apply the CSS Module class */}

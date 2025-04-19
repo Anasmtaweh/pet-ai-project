@@ -86,7 +86,7 @@ function PetForm() {
                 owner,
                 pictures: Array.from(pictures), // Ensure pictures is an array
             };
-            const response = await axios.post('http://13.60.74.169:3001/pets/add', petData);
+            const response = await axios.post('https://mishtika.duckdns.org/pets/add', petData);
 
             console.log('Pet added successfully:', response.data);
             navigate('/petprofile');

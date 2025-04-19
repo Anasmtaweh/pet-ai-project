@@ -20,7 +20,7 @@ function AdminUserManagement() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await axios.get('http://13.60.74.169:3001/admin/users', {
+                const response = await axios.get('https://mishtika.duckdns.org/admin/users', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 setUsers(response.data);
@@ -45,7 +45,7 @@ function AdminUserManagement() {
 
     const handleDeleteUser = async () => {
         try {
-            await axios.delete(`http://13.60.74.169:3001/admin/users/${userToDelete}`, {
+            await axios.delete(`https://mishtika.duckdns.org/admin/users/${userToDelete}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setUsers(users.filter((user) => user._id !== userToDelete));
@@ -58,7 +58,7 @@ function AdminUserManagement() {
 
     const handleToggleStatus = async (userId, isActive) => {
         try {
-            await axios.put(`http://13.60.74.169:3001/admin/users/${userId}`, { isActive }, {
+            await axios.put(`https://mishtika.duckdns.org/admin/users/${userId}`, { isActive }, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setUsers(users.map((user) =>

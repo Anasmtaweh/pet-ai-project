@@ -22,7 +22,7 @@ function AdminSettings() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                const response = await axios.get('http://13.60.74.169:3001/auth/user', {
+                const response = await axios.get('https://mishtika.duckdns.org/auth/user', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 const userData = response.data;
@@ -59,7 +59,7 @@ function AdminSettings() {
 
         try {
             await axios.put(
-                'http://13.60.74.169:3001/admin/settings/password',
+                'https://mishtika.duckdns.org/admin/settings/password',
                 { currentPassword, newPassword },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -87,7 +87,7 @@ function AdminSettings() {
 
         try {
             await axios.put(
-                'http://13.60.74.169:3001/admin/settings/profile',
+                'https://mishtika.duckdns.org/admin/settings/profile',
                 { username: name, age },
                 { headers: { Authorization: `Bearer ${token}` } }
             );

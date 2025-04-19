@@ -18,7 +18,7 @@ function PetProfile() {
 
     const handleDelete = async (petId) => {
         try {
-            await axios.delete(`http://13.60.74.169:3001/pets/${petId}`, {
+            await axios.delete(`https://mishtika.duckdns.org/pets/${petId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -35,7 +35,7 @@ function PetProfile() {
                 if (token) {
                     const decodedToken = JSON.parse(atob(token.split('.')[1]));
                     const ownerId = decodedToken.id;
-                    const response = await axios.get(`http://13.60.74.169:3001/pets/owner/${ownerId}`);
+                    const response = await axios.get(`https://mishtika.duckdns.org/pets/owner/${ownerId}`);
                     setPets(response.data);
                 }
             } catch (error) {

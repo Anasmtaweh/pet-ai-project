@@ -23,7 +23,7 @@ function AIChat() {
             setMessages([...messages, newMessage]);
             setUserInput('');
 
-            const response = await axios.post('http://13.60.74.169:3001/gpt/ask', { question: userInput });
+            const response = await axios.post('https://mishtika.duckdns.org/gpt/ask', { question: userInput });
             const aiResponse = { role: 'assistant', content: response.data.answer };
             setMessages([...messages, newMessage, aiResponse]);
         } catch (error) {

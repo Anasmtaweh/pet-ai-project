@@ -21,7 +21,7 @@ function AdminPetManagement() {
     useEffect(() => {
         const fetchPets = async () => {
             try {
-                const response = await axios.get('http://13.60.74.169:3001/admin/pets', {
+                const response = await axios.get('https://mishtika.duckdns.org/admin/pets', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 setPets(response.data);
@@ -46,7 +46,7 @@ function AdminPetManagement() {
 
     const handleDeletePet = async () => {
         try {
-            await axios.delete(`http://13.60.74.169:3001/admin/pets/${petToDelete}`, {
+            await axios.delete(`https://mishtika.duckdns.org/admin/pets/${petToDelete}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setPets(pets.filter((pet) => pet._id !== petToDelete));

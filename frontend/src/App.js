@@ -18,7 +18,7 @@ import Header from './components/Header'; // Import Header
 import Footer from './components/Footer'; // Import Footer
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import SearchPage from './pages/Search';
+
 
 
 function App() {
@@ -37,7 +37,6 @@ function App() {
                 <Route element={<ProtectedRoute />}>
                     <Route path="/petprofile" element={<PetProfile />} />
                     <Route path="/petform" element={<PetForm />} />
-                    <Route path="/search" element={<SearchPage />} />
                     <Route path="/aichat" element={<AIChat />} />
                     <Route path="/scheduler" element={<Scheduler />} />
                     <Route path="/editpet/:petId" element={<EditPet />} />

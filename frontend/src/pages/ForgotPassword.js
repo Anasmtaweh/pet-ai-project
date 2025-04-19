@@ -16,7 +16,7 @@ function ForgotPassword() {
         setError('');
 
         try {
-            await axios.post('http://13.60.74.169:3001/auth/forgot-password', { email });
+            await axios.post('https://mishtika.duckdns.org/auth/forgot-password', { email });
             setMessage('Password reset email sent. Please check your inbox.');
         } catch (err) {
             setError(err.response?.data?.message || 'An error occurred');
