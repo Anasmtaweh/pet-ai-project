@@ -74,48 +74,77 @@ router.delete('/users/:id', adminMiddleware, async (req, res) => {
 });
 // Update user status
 router.put('/users/:id', adminMiddleware, async (req, res) => {
+    const userId = req.params.id;
+    const { isActive: requestedStatus } = req.body; // Get the requested status from body
+
+    console.log(`--- Updating User Status (Revised) ---`);
+    console.log(`User ID: ${userId}`);
+    console.log(`Received Request Body:`, req.body);
+    console.log(`Requested isActive status: ${requestedStatus} (Type: ${typeof requestedStatus})`);
+
+    // Validate the received value
+    if (typeof requestedStatus !== 'boolean') {
+        console.error("Invalid data type received for isActive. Expected boolean.");
+        return res.status(400).json({ message: 'Invalid value provided for isActive status. Must be true or false.' });
+    }
+
+    let initialStatus = null;
+    let finalStatus = null;
+    let userFound = false;
+    let updateError = null;
+
     try {
-        const userId = req.params.id;
-        // 1. Explicitly check the request body
-        const { isActive } = req.body;
+        // 1. Find the user first to get the initial status
+        const userBeforeUpdate = await User.findById(userId).select('isActive'); // Only select isActive field
 
-        // 2. Add Detailed Logging
-        console.log(`--- Updating User Status ---`);
-        console.log(`User ID: ${userId}`);
-        console.log(`Received Request Body:`, req.body);
-        console.log(`Value received for isActive: ${isActive}`);
-        console.log(`Type of isActive received: ${typeof isActive}`);
-
-        // 3. Validate the received value (optional but good practice)
-        if (typeof isActive !== 'boolean') {
-            console.error("Invalid data type received for isActive. Expected boolean.");
-            return res.status(400).json({ message: 'Invalid value provided for isActive status. Must be true or false.' });
-        }
-
-        // 4. Perform the update using the received value
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { isActive: isActive }, // Use the value directly from req.body
-            { new: true } // Option to return the modified document
-        );
-
-        // 5. Check if the user was found and updated
-        if (!updatedUser) {
-            console.log(`User with ID ${userId} not found for update.`);
+        if (!userBeforeUpdate) {
+            console.log(`User with ID ${userId} not found before update attempt.`);
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // 6. Log the result
-        console.log(`User ${userId} status successfully updated in DB. New status:`, updatedUser.isActive);
-        console.log(`--- End Update User Status ---`);
+        userFound = true;
+        initialStatus = userBeforeUpdate.isActive;
+        console.log(`Initial status found in DB: ${initialStatus}`);
 
-        // 7. Send response
-        res.json({ message: 'User status updated successfully', user: updatedUser }); // Optionally send back updated user data
+        // 2. Perform the update using the requested status
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { isActive: requestedStatus }, // Use the value directly from req.body
+            { new: true } // Return the modified document
+        );
+
+        // Check if the update command returned a user (it should if findById found one)
+        if (!updatedUser) {
+             // This case is less likely if userBeforeUpdate was found, but good to check
+             console.error(`Update command did not return user ${userId}, though found initially.`);
+             updateError = 'Update command failed unexpectedly after user was found.';
+             // We might not have the finalStatus if updatedUser is null
+             finalStatus = initialStatus; // Assume no change if update failed
+        } else {
+            finalStatus = updatedUser.isActive;
+            console.log(`Status after update attempt (from updatedUser): ${finalStatus}`);
+        }
+
+        console.log(`--- End Update User Status (Revised) ---`);
+
+        // 3. Send detailed response back to frontend
+        res.json({
+            message: updateError ? 'Error during update' : 'User status update attempted',
+            userId: userId,
+            userFound: userFound,
+            requestedStatus: requestedStatus,
+            initialStatus: initialStatus,
+            finalStatus: finalStatus, // Status according to the updated document returned by Mongoose
+            updateError: updateError // Include any specific update error message
+        });
 
     } catch (error) {
         // Log any errors during the process
-        console.error(`Error updating status for user ${req.params.id}:`, error);
-        res.status(500).json({ message: 'Server error occurred while updating user status' });
+        console.error(`Error processing status update for user ${userId}:`, error);
+        res.status(500).json({
+             message: 'Server error occurred during status update',
+             error: error.message // Send back the error message
+        });
     }
 });
 // Get all pets with owner names
