@@ -20,14 +20,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read # Permission to read repository content
-      packages: write # Permission to write to GitHub Packages (if used for ECR) or id-token: write for OIDC
+      id-token: write # Required for aws-actions/configure-aws-credentials when using OIDC
+      # packages: write # Only needed if pushing to GitHub Packages, not ECR
 
     steps: # List of steps for this job
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2 # Using v2, ensure compatibility or update if needed
+        uses: aws-actions/configure-aws-credentials@v2 # Using v2
         with:
           # Using Access Keys stored as GitHub Secrets
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -64,9 +65,9 @@ jobs:
         uses: appleboy/ssh-action@master
         with:
           # Connection details
-          host: 51.21.213.59
-          port: 2222
-          username: ec2-user
+          host: 51.21.213.59 # Replace with your EC2 instance IP or DNS
+          port: 2222 # Replace with your SSH port if not 22
+          username: ec2-user # Replace with your EC2 instance username
           key: ${{ secrets.EC2_SSH_KEY }} # Private SSH key stored as a secret
 
           # Environment variables to pass to the script's environment on EC2
@@ -92,12 +93,14 @@ jobs:
             # Check if AWS CLI is installed, install if not (using yum for Amazon Linux)
             if ! command -v aws &> /dev/null; then
               echo "AWS CLI not found. Installing..."
+              # Use sudo if the user (ec2-user) doesn't have root privileges by default
               sudo yum update -y && sudo yum install -y awscli
               echo "AWS CLI installed."
             fi
 
             echo "Exporting AWS credentials for script context..."
             # Make AWS credentials available for the ECR login command within this script
+            # Note: These are already available via 'envs', but exporting ensures they are picked up by the aws cli if needed explicitly
             export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
             export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
             export AWS_REGION="$AWS_REGION"
@@ -119,11 +122,22 @@ jobs:
 
             echo "Stopping existing container if it exists: $CONTAINER_NAME"
             # Stop the currently running container, ignore error if it doesn't exist
-            docker stop $CONTAINER_NAME || echo "Container not running or failed to stop."
+            docker stop $CONTAINER_NAME || echo "Container '$CONTAINER_NAME' not running or failed to stop."
 
             echo "Removing existing container if it exists: $CONTAINER_NAME"
             # Remove the stopped container, ignore error if it doesn't exist
-            docker rm $CONTAINER_NAME || echo "Container not found or failed to remove."
+            docker rm $CONTAINER_NAME || echo "Container '$CONTAINER_NAME' not found or failed to remove."
+
+            # --- START DEBUGGING ---
+            echo "DEBUG: Checking JWT_SECRET value before docker run..."
+            if [ -z "$JWT_SECRET" ]; then
+              echo "DEBUG: ERROR - JWT_SECRET variable is EMPTY or NOT SET in the script environment!"
+            else
+              # Use printf for safer printing in case the secret contains special characters
+              # This will print "DEBUG: JWT_SECRET variable IS SET... Value starts with: abcde..." (masked in logs)
+              printf "DEBUG: JWT_SECRET variable IS SET in the script environment. Value starts with: %s\n" "${JWT_SECRET:0:5}..."
+            fi
+            # --- END DEBUGGING ---
 
             echo "Running new container: $CONTAINER_NAME"
             # Run the new container in detached mode (-d)
@@ -149,9 +163,10 @@ jobs:
               -e EMAIL_PASS="$EMAIL_PASS" \
               -e JWT_SECRET="$JWT_SECRET" \
               $IMAGE_NAME # The image to run
-            echo "✅ Deployment complete: $CONTAINER_NAME is now running."
+            echo "✅ Deployment complete: $CONTAINER_NAME container started."
 
             # Optional: Clean up dangling Docker images (images without tags)
             # echo "Pruning dangling Docker images..."
             # docker image prune -f
             # echo "Image pruning complete."
+
