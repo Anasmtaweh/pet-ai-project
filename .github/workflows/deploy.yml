@@ -1,11 +1,12 @@
+# c:\Users\Anas\M5\pet-ai-project\.github\workflows\deploy.yml
 name: Backend Deployment
 
 on:
   push:
-    branches: [main]
+    branches: [main] # Trigger on pushes to the main branch
     paths:
-      - 'backend/**'
-  workflow_dispatch:
+      - 'backend/**' # Only trigger if backend code changes
+  workflow_dispatch: # Allow manual triggering
 
 env:
   # Define environment variables accessible throughout the workflow
@@ -15,50 +16,61 @@ env:
 
 jobs:
   build-deploy: # Job name
-    name: Build and Deploy Backend # Optional: Display name for the job
+    name: Build and Deploy Backend # Display name for the job
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write # Needed for pushing to ECR if using GitHub Packages registry, or id-token: write for OIDC
+      contents: read # Permission to read repository content
+      packages: write # Permission to write to GitHub Packages (if used for ECR) or id-token: write for OIDC
 
     steps: # List of steps for this job
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2 # Or v3/v4 if preferred
+        uses: aws-actions/configure-aws-credentials@v2 # Using v2, ensure compatibility or update if needed
         with:
-          # Assuming you are using Access Keys directly as secrets
+          # Using Access Keys stored as GitHub Secrets
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-          # If using OIDC, replace the above with:
-          # role-to-assume: arn:aws:iam::YOUR_ACCOUNT_ID:role/YOUR_OIDC_ROLE_NAME
+          # --- Alternative: OIDC ---
+          # If using IAM Role for Service Accounts (OIDC), comment out keys above and uncomment below:
+          # role-to-assume: arn:aws:iam::YOUR_ACCOUNT_ID:role/YOUR_OIDC_ROLE_NAME # Replace with your Role ARN
           # aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: login-ecr # Give the step an ID to reference its output if needed
+        id: login-ecr # Step ID for potential future reference
         run: |
+          echo "Attempting ECR login..."
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $ECR_REGISTRY
+          echo "ECR login successful."
 
       - name: Build and push Docker image
-        id: build-image # Give the step an ID
+        id: build-image # Step ID
         run: |
-          IMAGE_TAG=latest # Define the image tag
+          IMAGE_TAG=latest # Using 'latest' tag
+          echo "Building Docker image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          # Build from the 'backend' directory relative to the repo root
           docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
+          echo "Pushing Docker image..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT # Make image name available if needed later
+          echo "Image pushed successfully."
+          # Output the full image name if needed by subsequent steps
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      # --- Corrected Deploy to EC2 Step ---
+      # --- Deploy to EC2 Step ---
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
+          # Connection details
           host: 51.21.213.59
           port: 2222
           username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          # List ALL secrets/variables needed by the script OR the container
+          key: ${{ secrets.EC2_SSH_KEY }} # Private SSH key stored as a secret
+
+          # Environment variables to pass to the script's environment on EC2
+          # These MUST match the names of your GitHub Secrets EXACTLY
           envs: >
             ECR_REGISTRY,
             ECR_REPOSITORY,
@@ -71,48 +83,52 @@ jobs:
             EMAIL_USER,
             EMAIL_PASS,
             JWT_SECRET
-          # 'script' is a separate key under 'with', at the same level as 'envs'
+
+          # The script to execute on the EC2 instance
           script: |
-            set -e # Exit immediately if a command exits with a non-zero status
+            set -e # Exit script immediately if any command fails
 
             echo "Checking for AWS CLI..."
-            # Corrected check syntax for bash
+            # Check if AWS CLI is installed, install if not (using yum for Amazon Linux)
             if ! command -v aws &> /dev/null; then
               echo "AWS CLI not found. Installing..."
-              # Use sudo for package management commands
               sudo yum update -y && sudo yum install -y awscli
               echo "AWS CLI installed."
             fi
 
-            echo "Exporting AWS credentials for script..."
-            # These are available because they are listed in 'envs'
+            echo "Exporting AWS credentials for script context..."
+            # Make AWS credentials available for the ECR login command within this script
             export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
             export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
             export AWS_REGION="$AWS_REGION"
 
-            echo "Logging into Amazon ECR..."
+            echo "Logging into Amazon ECR via script..."
+            # Log in to ECR using the exported credentials
             aws ecr get-login-password --region $AWS_REGION | \
               docker login --username AWS --password-stdin $ECR_REGISTRY
-            echo "ECR login successful."
+            echo "ECR login successful via script."
 
-            # Use environment variables defined at the workflow level
+            # Define image and container names using workflow env vars
             IMAGE_NAME="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
             CONTAINER_NAME="backend-container"
 
             echo "Pulling latest image: $IMAGE_NAME"
+            # Pull the newly pushed image from ECR
             docker pull $IMAGE_NAME
             echo "Image pulled successfully."
 
             echo "Stopping existing container if it exists: $CONTAINER_NAME"
-            # Use || true to prevent script failure if container doesn't exist
+            # Stop the currently running container, ignore error if it doesn't exist
             docker stop $CONTAINER_NAME || echo "Container not running or failed to stop."
 
             echo "Removing existing container if it exists: $CONTAINER_NAME"
+            # Remove the stopped container, ignore error if it doesn't exist
             docker rm $CONTAINER_NAME || echo "Container not found or failed to remove."
 
             echo "Running new container: $CONTAINER_NAME"
-            # Pass environment variables INTO the container using -e flags
-            # These reference the variables made available via the 'envs' parameter
+            # Run the new container in detached mode (-d)
+            # Pass ALL necessary environment variables from the script's context (via 'envs')
+            # into the container using '-e' flags.
             docker run -d \
               --name $CONTAINER_NAME \
               --health-cmd="curl -sSf http://localhost:3001/health || exit 1" \
@@ -132,6 +148,10 @@ jobs:
               -e EMAIL_USER="$EMAIL_USER" \
               -e EMAIL_PASS="$EMAIL_PASS" \
               -e JWT_SECRET="$JWT_SECRET" \
-              $IMAGE_NAME
+              $IMAGE_NAME # The image to run
             echo "✅ Deployment complete: $CONTAINER_NAME is now running."
 
+            # Optional: Clean up dangling Docker images (images without tags)
+            # echo "Pruning dangling Docker images..."
+            # docker image prune -f
+            # echo "Image pruning complete."
