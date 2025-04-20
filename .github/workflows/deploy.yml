@@ -8,39 +8,49 @@ on:
   workflow_dispatch:
 
 env:
+  # Define environment variables accessible throughout the workflow
   ECR_REGISTRY: 257394484725.dkr.ecr.eu-north-1.amazonaws.com
   ECR_REPOSITORY: pet-ai-backend
   AWS_REGION: eu-north-1
 
 jobs:
-  build-deploy:
+  build-deploy: # Job name
+    name: Build and Deploy Backend # Optional: Display name for the job
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: write # Needed for pushing to ECR if using GitHub Packages registry, or id-token: write for OIDC
 
-    steps:
+    steps: # List of steps for this job
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v2 # Or v3/v4 if preferred
         with:
+          # Assuming you are using Access Keys directly as secrets
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+          # If using OIDC, replace the above with:
+          # role-to-assume: arn:aws:iam::YOUR_ACCOUNT_ID:role/YOUR_OIDC_ROLE_NAME
+          # aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
+        id: login-ecr # Give the step an ID to reference its output if needed
         run: |
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $ECR_REGISTRY
 
-
       - name: Build and push Docker image
+        id: build-image # Give the step an ID
         run: |
-          docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./backend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          IMAGE_TAG=latest # Define the image tag
+          docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT # Make image name available if needed later
 
+      # --- Corrected Deploy to EC2 Step ---
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
@@ -48,37 +58,78 @@ jobs:
           port: 2222
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY
+          # List ALL secrets/variables needed by the script OR the container
+          envs: >
+            ECR_REGISTRY,
+            ECR_REPOSITORY,
+            AWS_REGION,
+            AWS_ACCESS_KEY_ID,
+            AWS_SECRET_ACCESS_KEY,
+            S3_BUCKET_NAME,
+            OPENAI_API_KEY,
+            DB_URL,
+            EMAIL_USER,
+            EMAIL_PASS
+          # 'script' is a separate key under 'with', at the same level as 'envs'
           script: |
-            set -e
-            # Install AWS CLI if missing
+            set -e # Exit immediately if a command exits with a non-zero status
+
+            echo "Checking for AWS CLI..."
+            # Corrected check syntax for bash
             if ! command -v aws &> /dev/null; then
-                sudo yum install -y awscli
+              echo "AWS CLI not found. Installing..."
+              # Use sudo for package management commands
+              sudo yum update -y && sudo yum install -y awscli
+              echo "AWS CLI installed."
             fi
-            
-            # Configure AWS credentials
+
+            echo "Exporting AWS credentials for script..."
+            # These are available because they are listed in 'envs'
             export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
             export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
             export AWS_REGION="$AWS_REGION"
-            
-            # Login to ECR
-            aws ecr get-login-password --region $AWS_REGION | \
-            docker login --username AWS --password-stdin $ECR_REGISTRY
-            
-            # Pull and run container
-            docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
-            docker stop backend-container || true
-            docker rm backend-container || true
 
+            echo "Logging into Amazon ECR..."
+            aws ecr get-login-password --region $AWS_REGION | \
+              docker login --username AWS --password-stdin $ECR_REGISTRY
+            echo "ECR login successful."
+
+            # Use environment variables defined at the workflow level
+            IMAGE_NAME="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+            CONTAINER_NAME="backend-container"
+
+            echo "Pulling latest image: $IMAGE_NAME"
+            docker pull $IMAGE_NAME
+            echo "Image pulled successfully."
+
+            echo "Stopping existing container if it exists: $CONTAINER_NAME"
+            # Use || true to prevent script failure if container doesn't exist
+            docker stop $CONTAINER_NAME || echo "Container not running or failed to stop."
+
+            echo "Removing existing container if it exists: $CONTAINER_NAME"
+            docker rm $CONTAINER_NAME || echo "Container not found or failed to remove."
+
+            echo "Running new container: $CONTAINER_NAME"
+            # Pass environment variables INTO the container using -e flags
+            # These reference the variables made available via the 'envs' parameter
             docker run -d \
-            --name backend-container \
-            --health-cmd="curl -sSf http://localhost:3001/health || exit 1" \
-            --health-interval=30s \
-            --health-retries=3 \
-            --health-start-period=30s \
-            --health-timeout=10s \
-            --restart=unless-stopped \
-            -p 3001:3001 \
-            -e NODE_ENV=production \
-            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            $ECR_REGISTRY/$ECR_REPOSITORY:latest
+              --name $CONTAINER_NAME \
+              --health-cmd="curl -sSf http://localhost:3001/health || exit 1" \
+              --health-interval=30s \
+              --health-retries=3 \
+              --health-start-period=30s \
+              --health-timeout=10s \
+              --restart=unless-stopped \
+              -p 3001:3001 \
+              -e NODE_ENV=production \
+              -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
+              -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+              -e AWS_REGION="$AWS_REGION" \
+              -e S3_BUCKET_NAME="$S3_BUCKET_NAME" \
+              -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+              -e DB_URL="$DB_URL" \
+              -e EMAIL_USER="$EMAIL_USER" \
+              -e EMAIL_PASS="$EMAIL_PASS" \
+              $IMAGE_NAME
+            echo "✅ Deployment complete: $CONTAINER_NAME is now running."
+
