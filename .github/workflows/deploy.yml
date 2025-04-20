@@ -69,7 +69,8 @@ jobs:
             OPENAI_API_KEY,
             DB_URL,
             EMAIL_USER,
-            EMAIL_PASS
+            EMAIL_PASS,
+            JWT_SECRET
           # 'script' is a separate key under 'with', at the same level as 'envs'
           script: |
             set -e # Exit immediately if a command exits with a non-zero status
@@ -130,6 +131,7 @@ jobs:
               -e DB_URL="$DB_URL" \
               -e EMAIL_USER="$EMAIL_USER" \
               -e EMAIL_PASS="$EMAIL_PASS" \
+              -e JWT_SECRET="$JWT_SECRET" \
               $IMAGE_NAME
             echo "✅ Deployment complete: $CONTAINER_NAME is now running."
 
