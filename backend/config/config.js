@@ -7,6 +7,7 @@ module.exports = {
     DB_URL,
     EMAIL_USER,
     EMAIL_PASS,
+    JWT_SECRET,
     openaiApiKey: process.env.OPENAI_API_KEY?.trim(),
     // --- Add AWS Config ---
     aws: {
