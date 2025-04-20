@@ -56,27 +56,26 @@ function AdminUserManagement() {
         }
     };
 
-    // --- CORRECTED FUNCTION ---
-    const handleToggleStatus = async (userId, currentIsActive) => { // Renamed variable for clarity
-        const newIsActive = !currentIsActive; // Calculate the desired new state
+    // --- MODIFIED FUNCTION: Renamed and changed logic ---
+    const handleSetStatus = async (userId, desiredStatus) => { // Accepts the desired boolean status
         try {
-            // Send the NEW desired state to the backend
+            // Send the DESIRED state directly to the backend
             await axios.put(`https://mishtika.duckdns.org/admin/users/${userId}`,
-                { isActive: newIsActive }, // Send the opposite of the current status
+                { isActive: desiredStatus }, // Send the desired status
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
             );
             // Update local state to reflect the change
             setUsers(users.map((user) =>
-                user._id === userId ? { ...user, isActive: newIsActive } : user
+                user._id === userId ? { ...user, isActive: desiredStatus } : user
             ));
         } catch (err) {
-            console.error('Error toggling user status:', err);
-            setError(err.response?.data?.message || 'An error occurred while toggling user status.');
+            console.error('Error setting user status:', err);
+            setError(err.response?.data?.message || 'An error occurred while setting user status.');
         }
     };
-    // --- END OF CORRECTION ---
+    // --- END OF MODIFICATION ---
 
     return (
         <Container className={styles.userManagementContainer}>
@@ -103,21 +102,40 @@ function AdminUserManagement() {
                                 <Button variant="danger" size='sm' className={styles.actionButton} onClick={() => handleShowModal(user._id)}>
                                     Delete
                                 </Button>
-                                <Button
-                                    variant={user.isActive ? 'warning' : 'success'}
-                                    size='sm'
-                                    className={`${styles.actionButton} ms-2`}
-                                    // Pass the user's current isActive status to the handler
-                                    onClick={() => handleToggleStatus(user._id, user.isActive)}
-                                >
-                                    {user.isActive ? 'Deactivate' : 'Activate'}
-                                </Button>
+
+                                {/* --- MODIFIED onClick handlers --- */}
+                                {user.isActive ? (
+                                    // If user is Active, show Deactivate button
+                                    <Button
+                                        variant={'warning'}
+                                        size='sm'
+                                        className={`${styles.actionButton} ms-2`}
+                                        // Pass desired state: false
+                                        onClick={() => handleSetStatus(user._id, false)}
+                                    >
+                                        Deactivate
+                                    </Button>
+                                ) : (
+                                    // If user is Inactive, show Activate button
+                                    <Button
+                                        variant={'success'}
+                                        size='sm'
+                                        className={`${styles.actionButton} ms-2`}
+                                        // Pass desired state: true
+                                        onClick={() => handleSetStatus(user._id, true)}
+                                    >
+                                        Activate
+                                    </Button>
+                                )}
+                                {/* --- END OF MODIFICATION --- */}
+
                             </td>
                         </tr>
                     ))}
                 </tbody>
             </Table>
 
+            {/* --- Modal remains the same --- */}
             <Modal show={showModal} onHide={handleCloseModal}>
                 <Modal.Header closeButton>
                     <Modal.Title>Confirm Delete</Modal.Title>
@@ -133,7 +151,6 @@ function AdminUserManagement() {
                 </Modal.Footer>
             </Modal>
         </Container>
-
     );
 }
 

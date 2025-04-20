@@ -19,6 +19,7 @@ function PetForm() {
     const [breed, setBreed] = useState('');
     const [medicalInfo, setMedicalInfo] = useState('');
     const [pictures, setPictures] = useState([]);
+    const [gender, setGender] = useState(''); // Added gender state
     const [error, setError] = useState('');
     const [isOtherBreed, setIsOtherBreed] = useState(false);
     const navigate = useNavigate();
@@ -28,7 +29,7 @@ function PetForm() {
         "Bulldog", "Poodle", "Beagle", "Rottweiler", "Yorkshire Terrier", "Dachshund",
         "Boxer", "Siberian Husky", "Shih Tzu", "Great Dane", "Doberman Pinscher",
         "Australian Shepherd", "Cavalier King Charles Spaniel", "Pembroke Welsh Corgi",
-        "Chihuahua", "Bernese Mountain Dog"
+        "Chihuahua", "Bernese Mountain Dog", "Other" // Added Other
     ];
 
     const catBreeds = [
@@ -36,103 +37,153 @@ function PetForm() {
         "Bengal", "Sphynx", "Abyssinian", "Scottish Fold", "Russian Blue",
         "American Shorthair", "Norwegian Forest Cat", "Devon Rex", "Birman",
         "Oriental Shorthair", "Exotic Shorthair", "Tonkinese", "Burmese",
-        "Siberian", "Cornish Rex"
+        "Siberian", "Cornish Rex", "Other" // Added Other
     ];
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        // Basic Input Validation
-        if (!name.trim()) {
-            setError('Pet name is required.');
-            return;
+        // --- Validations ---
+        if (!name.trim()) { setError('Pet name is required.'); return; }
+        if (isNaN(ageYears) || ageYears < 0) { setError('Invalid age in years (0 or greater).'); return; }
+        if (isNaN(ageMonths) || ageMonths < 0 || ageMonths > 11) { setError('Invalid age in months (0-11).'); return; }
+        if (isNaN(weight) || weight <= 0) { setError('Invalid weight (must be greater than 0).'); return; } // Changed to > 0
+        if (!gender) { setError('Please select a gender.'); return; }
+        if (!species) { setError('Please select a species.'); return; }
+        if (!breed) { setError('Please select or enter a breed.'); return; }
+        if (breed === 'Other' && !isOtherBreed) { // Handle if 'Other' is selected but text field wasn't shown/filled (edge case)
+             setError('Please specify the breed if selecting Other.'); return;
         }
-        if (isNaN(ageMonths) || ageMonths < 0 || ageMonths > 11) {
-            setError('Invalid age in months (0-11).');
-            return;
-        }
-        if (isNaN(ageYears) || ageYears < 0) {
-            setError('Invalid age in years (0 or greater).');
-            return;
-        }
-        if (isNaN(weight) || weight < 0) {
-            setError('Invalid weight (0 or greater).');
-            return;
-        }
-        if (!species || (species !== 'Dog' && species !== 'Cat')) {
-            setError('Please select a species.');
-            return;
-        }
-        if (!breed.trim() && !isOtherBreed) {
-            setError('Please select or enter a breed.');
-            return;
-        }
+        // --- End Validations ---
 
 
         try {
             const token = localStorage.getItem('token');
+            if (!token) {
+                setError("Authentication error. Please log in again.");
+                return;
+            }
             const decodedToken = JSON.parse(atob(token.split('.')[1]));
             const owner = decodedToken.id;
 
-            const petData = {
-                name,
-                ageYears: Number(ageYears),
-                ageMonths: Number(ageMonths),
-                weight: Number(weight),
-                species,
-                breed,
-                medicalInfo,
-                owner,
-                pictures: Array.from(pictures), // Ensure pictures is an array
-            };
-            const response = await axios.post('https://mishtika.duckdns.org/pets/add', petData);
+            // Use FormData for potential file uploads
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('ageYears', Number(ageYears));
+            formData.append('ageMonths', Number(ageMonths));
+            formData.append('weight', Number(weight));
+            formData.append('species', species);
+            formData.append('gender', gender);
+            formData.append('breed', isOtherBreed ? breed : breed); // Send the text field value if 'Other' was selected
+            formData.append('medicalInfo', medicalInfo);
+            formData.append('owner', owner);
+
+            // Append pictures if any were selected
+            for (let i = 0; i < pictures.length; i++) {
+                formData.append('pictures', pictures[i]); // Key 'pictures' matches backend expectation if using multer
+            }
+
+            // Adjust axios call if using FormData (header might change)
+            const response = await axios.post('https://mishtika.duckdns.org/pets/add', formData, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    // 'Content-Type': 'multipart/form-data', // Axios might set this automatically with FormData
+                },
+            });
 
             console.log('Pet added successfully:', response.data);
             navigate('/petprofile');
         } catch (err) {
             console.error('Error adding pet:', err.response?.data || err.message);
-            setError(err.response?.data?.message || 'An error occurred');
+            // More specific error handling
+            let errorMsg = 'An error occurred while adding the pet.';
+            if (err.response?.data?.message) {
+                errorMsg = err.response.data.message;
+            } else if (err.response?.data?.details) {
+                // Extract Mongoose validation errors
+                const details = err.response.data.details;
+                errorMsg = Object.values(details).map(detail => detail.message).join(' ');
+            }
+            setError(errorMsg);
         }
     };
-    const handleAgeYearsChange = (e) => {
-        setAgeYears(e.target.value);
-    };
-    const handleAgeMonthsChange = (e) => {
-        setAgeMonths(e.target.value);
-    };
-    const handleWeightChange = (e) => {
-        setWeight(e.target.value);
-    };
+
+    const handleAgeYearsChange = (e) => { setAgeYears(e.target.value); };
+    const handleAgeMonthsChange = (e) => { setAgeMonths(e.target.value); };
+    const handleWeightChange = (e) => { setWeight(e.target.value); };
     const handleBreedChange = (e) => {
-        setBreed(e.target.value);
-        setIsOtherBreed(e.target.value === 'other');
+        const selectedBreed = e.target.value;
+        setBreed(selectedBreed);
+        setIsOtherBreed(selectedBreed === 'Other');
+    };
+    const handleOtherBreedChange = (e) => {
+        setBreed(e.target.value); // Update breed state directly when typing in 'Other' field
     };
     const handleSpeciesClick = (selectedSpecies) => {
         setSpecies(selectedSpecies);
+        setBreed(''); // Reset breed when species changes
+        setIsOtherBreed(false);
     };
+    const handleGenderChange = (e) => { setGender(e.target.value); };
+    const handlePictureChange = (e) => { setPictures(e.target.files); }; // Store FileList
 
     return (
         <Container className={`${styles.petFormContainer} mt-5`}>
             <h1 className={styles.petFormTitle}>Add Pet</h1>
             {error && <div className="alert alert-danger">{error}</div>}
             <Form onSubmit={handleSubmit}>
+                {/* Name */}
                 <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Name</Form.Label>
                     <Form.Control className={styles.formControl} type="text" value={name} onChange={(e) => setName(e.target.value)} required />
                 </Form.Group>
+                {/* Age Years */}
                 <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Age (Years)</Form.Label>
                     <Form.Control className={styles.formControl} type="number" value={ageYears} onChange={handleAgeYearsChange} required min="0" />
                 </Form.Group>
+                {/* Age Months */}
                 <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Age (Months)</Form.Label>
                     <Form.Control className={styles.formControl} type="number" value={ageMonths} onChange={handleAgeMonthsChange} required min="0" max="11" />
                 </Form.Group>
+                {/* Weight */}
                 <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Weight (kg)</Form.Label>
-                    <Form.Control className={styles.formControl} type="number" value={weight} onChange={handleWeightChange} required min="0" />
+                    <Form.Control className={styles.formControl} type="number" step="0.1" value={weight} onChange={handleWeightChange} required min="0.1" />
                 </Form.Group>
+
+                {/* Gender Radio Buttons */}
+                <Form.Group className="mb-3">
+                    <Form.Label className={styles.formLabel}>Gender</Form.Label>
+                    <div>
+                        <Form.Check
+                            inline
+                            type="radio"
+                            label="Male"
+                            name="gender"
+                            id="genderMale"
+                            value="Male"
+                            checked={gender === 'Male'}
+                            onChange={handleGenderChange}
+                            required
+                        />
+                        <Form.Check
+                            inline
+                            type="radio"
+                            label="Female"
+                            name="gender"
+                            id="genderFemale"
+                            value="Female"
+                            checked={gender === 'Female'}
+                            onChange={handleGenderChange}
+                            required
+                        />
+                    </div>
+                </Form.Group>
+
+                {/* Species Selection */}
                 <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Species</Form.Label>
                     <div className={styles.speciesSelection}>
@@ -150,48 +201,57 @@ function PetForm() {
                         </div>
                     </div>
                 </Form.Group>
+
+                {/* Breed Selection (Conditional) */}
                 {species === 'Dog' && (
                     <Form.Group className="mb-3">
                         <Form.Label className={styles.formLabel}>Breed</Form.Label>
-                        <Form.Select className={styles.formControl} value={breed} onChange={handleBreedChange} required={!isOtherBreed}>
-                            <option value="">Select...</option>
+                        <Form.Select className={styles.formControl} value={breed} onChange={handleBreedChange} required>
+                            <option value="">Select Dog Breed...</option>
                             {dogBreeds.map((breedName) => (
                                 <option key={breedName} value={breedName}>{breedName}</option>
                             ))}
-                            <option value="other">Other (Please Specify)</option>
+                            {/* 'Other' is now part of the array */}
                         </Form.Select>
                     </Form.Group>
                 )}
                 {species === 'Cat' && (
                     <Form.Group className="mb-3">
                         <Form.Label className={styles.formLabel}>Breed</Form.Label>
-                        <Form.Select className={styles.formControl} value={breed} onChange={handleBreedChange} required={!isOtherBreed}>
-                            <option value="">Select...</option>
+                        <Form.Select className={styles.formControl} value={breed} onChange={handleBreedChange} required>
+                            <option value="">Select Cat Breed...</option>
                             {catBreeds.map((breedName) => (
                                 <option key={breedName} value={breedName}>{breedName}</option>
                             ))}
-                            <option value="other">Other (Please Specify)</option>
+                             {/* 'Other' is now part of the array */}
                         </Form.Select>
                     </Form.Group>
                 )}
-                {(species === 'Dog' || species === 'Cat') && isOtherBreed && (
+
+                {/* Other Breed Text Input (Conditional) */}
+                {isOtherBreed && (
                     <Form.Group className="mb-3">
-                        <Form.Control className={styles.formControl} type="text" placeholder="Enter Breed" value={breed} onChange={(e) => setBreed(e.target.value)} required />
+                        <Form.Label className={styles.formLabel}>Specify Breed</Form.Label>
+                        <Form.Control
+                            className={styles.formControl}
+                            type="text"
+                            placeholder="Enter breed name"
+                            value={breed === 'Other' ? '' : breed} // Show current text if not 'Other'
+                            onChange={handleOtherBreedChange} // Use specific handler
+                            required
+                        />
                     </Form.Group>
                 )}
-                {species !== 'Dog' && species !== 'Cat' && (
-                    <Form.Group className="mb-3">
-                        <Form.Label className={styles.formLabel}>Breed</Form.Label>
-                        <Form.Control className={styles.formControl} type="text" value={breed} onChange={(e) => setBreed(e.target.value)} required />
-                    </Form.Group>
-                )}
+
+                {/* Medical Info */}
                 <Form.Group className="mb-3">
-                    <Form.Label className={styles.formLabel}>Medical Information</Form.Label>
-                    <Form.Control className={styles.formControl} as="textarea" value={medicalInfo} onChange={(e) => setMedicalInfo(e.target.value)} />
+                    <Form.Label className={styles.formLabel}>Medical Information (Optional)</Form.Label>
+                    <Form.Control className={styles.formControl} as="textarea" rows={3} value={medicalInfo} onChange={(e) => setMedicalInfo(e.target.value)} />
                 </Form.Group>
+                {/* Pictures */}
                 <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Pictures (Optional)</Form.Label>
-                    <Form.Control className={styles.formControl} type="file" multiple onChange={(e) => setPictures(Array.from(e.target.files))} />
+                    <Form.Control className={styles.formControl} type="file" multiple onChange={handlePictureChange} accept="image/*" />
                 </Form.Group>
                 <Button className={styles.petFormButton} variant="primary" type="submit">Add Pet</Button>
             </Form>

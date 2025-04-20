@@ -5,8 +5,7 @@ import Table from 'react-bootstrap/Table';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import styles from './AdminPetManagement.module.css';
-import { FaDog, FaCat } from 'react-icons/fa';
-
+import { FaDog, FaCat } from 'react-icons/fa'; // Removed gender icons
 
 function AdminPetManagement() {
     useEffect(() => {
@@ -18,19 +17,24 @@ function AdminPetManagement() {
     const [error, setError] = useState('');
     const token = localStorage.getItem('token');
 
-    useEffect(() => {
-        const fetchPets = async () => {
-            try {
-                const response = await axios.get('https://mishtika.duckdns.org/admin/pets', {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                setPets(response.data);
-            } catch (err) {
-                console.error('Error fetching pets:', err);
-                setError(err.response?.data?.message || 'An error occurred while fetching pets.');
-            }
-        };
+    const fetchPets = async () => { // Moved fetch logic
+        setError('');
+        if (!token) {
+            setError("Admin not logged in.");
+            return;
+        }
+        try {
+            const response = await axios.get('https://mishtika.duckdns.org/admin/pets', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setPets(response.data);
+        } catch (err) {
+            console.error('Error fetching pets:', err);
+            setError(err.response?.data?.message || 'An error occurred while fetching pets.');
+        }
+    };
 
+    useEffect(() => {
         fetchPets();
     }, [token]);
 
@@ -45,15 +49,21 @@ function AdminPetManagement() {
     };
 
     const handleDeletePet = async () => {
+        if (!petToDelete) return;
+        setError('');
         try {
             await axios.delete(`https://mishtika.duckdns.org/admin/pets/${petToDelete}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setPets(pets.filter((pet) => pet._id !== petToDelete));
+            // Re-fetch after delete
+            fetchPets();
+            // Or filter locally: setPets(pets.filter((pet) => pet._id !== petToDelete));
             handleCloseModal();
         } catch (err) {
             console.error('Error deleting pet:', err);
             setError(err.response?.data?.message || 'An error occurred while deleting pet.');
+            // Keep modal open on error? Or close? Currently closes.
+            handleCloseModal();
         }
     };
 
@@ -61,12 +71,13 @@ function AdminPetManagement() {
         <Container className={styles.petManagementContainer}>
             <h2 className={styles.petManagementTitle}>Pet Management</h2>
             {error && <div className={`alert alert-danger`}>{error}</div>}
-            <Table striped bordered hover className={styles.petManagementTable}>
+            <Table striped bordered hover responsive className={styles.petManagementTable}> {/* Added responsive */}
                 <thead>
                     <tr>
                         <th>Pet Name</th>
                         <th>Owner (User Email)</th>
                         <th>Species</th>
+                        {/* NO Gender Header */}
                         <th>Breed</th>
                         <th>Age</th>
                         <th>Actions</th>
@@ -76,40 +87,47 @@ function AdminPetManagement() {
                     {pets.map((pet) => (
                         <tr key={pet._id}>
                             <td>{pet.name}</td>
-                            <td>{pet.ownerName}</td>
+                            <td>{pet.ownerName || 'N/A'}</td> {/* Use ownerName from backend */}
                             <td>
-                                {pet.species === 'Dog' ? <FaDog /> : pet.species === 'Cat' ? <FaCat /> : pet.species}
+                                {pet.species === 'Dog' ? <FaDog /> : pet.species === 'Cat' ? <FaCat /> : ''} {pet.species}
                             </td>
+                            {/* NO Gender Cell */}
                             <td>{pet.breed}</td>
-                            <td>{pet.ageYears} years, {pet.ageMonths} months</td>
-                            <td>                               
-                                <Button variant="danger" className={styles.actionButton} onClick={() => handleShowModal(pet._id)}>
+                            <td>{pet.ageYears}y, {pet.ageMonths}m</td>
+                            <td>
+                                <Button variant="danger" size="sm" className={styles.actionButton} onClick={() => handleShowModal(pet._id)}>
                                     Delete
                                 </Button>
                             </td>
                         </tr>
                     ))}
+                     {pets.length === 0 && !error && (
+                        <tr>
+                            <td colSpan="6" className="text-center">No pets found in the system.</td>
+                        </tr>
+                     )}
                 </tbody>
             </Table>
 
+            {/* --- Delete Confirmation Modal --- */}
             <Modal show={showModal} onHide={handleCloseModal}>
                 <Modal.Header closeButton>
                     <Modal.Title>Confirm Delete</Modal.Title>
                 </Modal.Header>
-                <Modal.Body>Are you sure you want to delete this pet?</Modal.Body>
+                <Modal.Body>Are you sure you want to delete this pet? This action cannot be undone.</Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={handleCloseModal}>
                         Cancel
                     </Button>
                     <Button variant="danger" onClick={handleDeletePet}>
-                        Delete
+                        Delete Pet
                     </Button>
                 </Modal.Footer>
             </Modal>
         </Container>
-       
     );
 }
 
 export default AdminPetManagement;
+
 

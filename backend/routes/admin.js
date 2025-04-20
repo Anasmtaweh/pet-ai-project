@@ -7,6 +7,20 @@ const RecentActivity = require('../models/RecentActivity');
 const adminMiddleware = require('../middleware/adminMiddleware');
 const bcrypt = require('bcrypt');
 
+router.get('/user', adminMiddleware, async (req, res) => {
+    try {
+        // req.user.id is set by the adminMiddleware
+        const user = await User.findById(req.user.id).select('-password');
+        if (!user) {
+            // Should not happen if middleware passed, but good practice
+            return res.status(404).json({ message: 'Admin user not found' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error("Error fetching admin user data:", error);
+        res.status(500).json({ message: 'Server error fetching admin data' });
+    }
+});
 router.get('/dashboard', adminMiddleware, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments();

@@ -1,3 +1,4 @@
+// c:\Users\Anas\M5\pet-ai-project\backend\models\Pet.js
 const mongoose = require('mongoose');
 
 const petSchema = new mongoose.Schema({
@@ -27,6 +28,13 @@ const petSchema = new mongoose.Schema({
         enum: ['Cat', 'Dog'],
         required: true,
     },
+    // --- ADD GENDER FIELD ---
+    gender: {
+        type: String,
+        enum: ['Male', 'Female'],
+        required: true, // Make it required
+    },
+    // --- END ADD ---
     breed: {
         type: String,
         required: true,
@@ -51,3 +59,4 @@ const petSchema = new mongoose.Schema({
 const Pet = mongoose.model('Pet', petSchema, 'pets');
 
 module.exports = Pet;
+

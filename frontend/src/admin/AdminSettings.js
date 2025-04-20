@@ -22,7 +22,7 @@ function AdminSettings() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                const response = await axios.get('https://mishtika.duckdns.org/auth/user', {
+                const response = await axios.get('https://mishtika.duckdns.org/admin/user', { // Use /admin/user
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 const userData = response.data;
