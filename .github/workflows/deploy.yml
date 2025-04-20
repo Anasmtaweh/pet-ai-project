@@ -82,8 +82,7 @@ jobs:
             OPENAI_API_KEY,
             DB_URL,
             EMAIL_USER,
-            EMAIL_PASS,
-            JWT_SECRET
+            EMAIL_PASS
 
           # The script to execute on the EC2 instance
           script: |
@@ -161,7 +160,7 @@ jobs:
               -e DB_URL="$DB_URL" \
               -e EMAIL_USER="$EMAIL_USER" \
               -e EMAIL_PASS="$EMAIL_PASS" \
-              -e JWT_SECRET="$JWT_SECRET" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
               $IMAGE_NAME # The image to run
             echo "✅ Deployment complete: $CONTAINER_NAME container started."
 
