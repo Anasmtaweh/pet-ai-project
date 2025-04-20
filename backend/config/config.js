@@ -1,20 +1,11 @@
-const DB_URL = process.env.DB_URL ;
-const EMAIL_USER = process.env.EMAIL_USER ;
-const EMAIL_PASS = process.env.EMAIL_PASS ;
-const JWT_SECRET = process.env.JWT_SECRET; // <-- Add this
+const DB_URL = 'mongodb+srv://anas:BLACKDEVIL69@petmanagment.dyd4r.mongodb.net/petManagementDB?retryWrites=true&w=majority&appName=PETMANAGMENT';
+const EMAIL_USER = 'anasanasmtaweh@gmail.com';
+const EMAIL_PASS = 'rqxv xbug alvy jxxx';
 
 module.exports = {
     DB_URL,
     EMAIL_USER,
     EMAIL_PASS,
-    JWT_SECRET,
-    openaiApiKey: process.env.OPENAI_API_KEY?.trim(),
-    // --- Add AWS Config ---
-    aws: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        region: process.env.AWS_REGION,
-        s3BucketName: process.env.S3_BUCKET_NAME,
-    }
-    // --- End Add ---
+    openaiApiKey: process.env.OPENAI_API_KEY,
+
 };

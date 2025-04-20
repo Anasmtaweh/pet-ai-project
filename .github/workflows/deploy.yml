@@ -1,28 +1,25 @@
-# c:\Users\Anas\M5\pet-ai-project\.github\workflows\deploy.yml
 name: Backend Deployment
 
 on:
   push:
-    branches: [main] # Trigger on pushes to the main branch
+    branches: [main]
     paths:
-      - 'backend/**' # Only trigger if backend code changes
-  workflow_dispatch: # Allow manual triggering
+      - 'backend/**'
+  workflow_dispatch:
 
 env:
-  # Define environment variables accessible throughout the workflow
   ECR_REGISTRY: 257394484725.dkr.ecr.eu-north-1.amazonaws.com
   ECR_REPOSITORY: pet-ai-backend
   AWS_REGION: eu-north-1
 
 jobs:
-  build-deploy: # Job name
-    name: Build and Deploy Backend # Display name for the job
+  build-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read # Permission to read repository content
-      id-token: write # Required for aws-actions/configure-aws-credentials using OIDC
+      contents: read
+      packages: write
 
-    steps: # List of steps for this job
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -34,25 +31,16 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: login-ecr
         run: |
-          echo "Attempting ECR login..."
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $ECR_REGISTRY
-          echo "ECR login successful."
+
 
       - name: Build and push Docker image
-        id: build-image
         run: |
-          IMAGE_TAG=latest
-          echo "Building Docker image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
-          echo "Pushing Docker image..."
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "Image pushed successfully."
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      # --- Deploy to EC2 Step ---
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
@@ -60,70 +48,37 @@ jobs:
           port: 2222
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-
-          # Environment variables needed BY THE SCRIPT ITSELF (ECR login/pull)
-          # Application secrets removed from here
-          envs: >
-            ECR_REGISTRY,
-            ECR_REPOSITORY,
-            AWS_REGION
-
-          # The script to execute on the EC2 instance
+          envs: ECR_REGISTRY,ECR_REPOSITORY,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY
           script: |
-            set -e # Exit script immediately if any command fails
-
-            # --- ECR Login and Image Pull (No changes needed here) ---
-            echo "Checking for AWS CLI..."
+            set -e
+            # Install AWS CLI if missing
             if ! command -v aws &> /dev/null; then
-              echo "AWS CLI not found. Installing..."
-              sudo yum update -y && sudo yum install -y awscli
-              echo "AWS CLI installed."
+                sudo yum install -y awscli
             fi
-            # Note: AWS creds for login are handled by the action's context, not needed via envs here
-            echo "Logging into Amazon ECR via script..."
+            
+            # Configure AWS credentials
+            export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
+            export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
+            export AWS_REGION="$AWS_REGION"
+            
+            # Login to ECR
             aws ecr get-login-password --region $AWS_REGION | \
-              docker login --username AWS --password-stdin $ECR_REGISTRY
-            echo "ECR login successful via script."
+            docker login --username AWS --password-stdin $ECR_REGISTRY
+            
+            # Pull and run container
+            docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            docker stop backend-container || true
+            docker rm backend-container || true
 
-            IMAGE_NAME="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-            CONTAINER_NAME="backend-container"
-
-            echo "Pulling latest image: $IMAGE_NAME"
-            docker pull $IMAGE_NAME
-            echo "Image pulled successfully."
-
-            echo "Stopping existing container if it exists: $CONTAINER_NAME"
-            docker stop $CONTAINER_NAME || echo "Container '$CONTAINER_NAME' not running or failed to stop."
-
-            echo "Removing existing container if it exists: $CONTAINER_NAME"
-            docker rm $CONTAINER_NAME || echo "Container '$CONTAINER_NAME' not found or failed to remove."
-
-            # --- Docker Run with Direct Secret Injection ---
-            echo "Running new container: $CONTAINER_NAME"
-            # Use direct secret injection `${{ secrets.SECRET_NAME }}` for all app secrets
             docker run -d \
-              --name $CONTAINER_NAME \
-              --health-cmd="curl -sSf http://localhost:3001/health || exit 1" \
-              --health-interval=30s \
-              --health-retries=3 \
-              --health-start-period=30s \
-              --health-timeout=10s \
-              --restart=unless-stopped \
-              -p 3001:3001 \
-              -e NODE_ENV=production \
-              -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
-              -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-              -e AWS_REGION="${{ env.AWS_REGION }}" \ # Use global env var for region
-              -e S3_BUCKET_NAME="${{ secrets.S3_BUCKET_NAME }}" \
-              -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-              -e DB_URL="${{ secrets.DB_URL }}" \
-              -e EMAIL_USER="${{ secrets.EMAIL_USER }}" \
-              -e EMAIL_PASS="${{ secrets.EMAIL_PASS }}" \
-              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-              $IMAGE_NAME # The image to run
-            echo "✅ Deployment complete: $CONTAINER_NAME container started."
-
-            # Optional: Clean up dangling Docker images
-            # echo "Pruning dangling Docker images..."
-            # docker image prune -f
-            # echo "Image pruning complete."
+            --name backend-container \
+            --health-cmd="curl -sSf http://localhost:3001/health || exit 1" \
+            --health-interval=30s \
+            --health-retries=3 \
+            --health-start-period=30s \
+            --health-timeout=10s \
+            --restart=unless-stopped \
+            -p 3001:3001 \
+            -e NODE_ENV=production \
+            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            $ECR_REGISTRY/$ECR_REPOSITORY:latest

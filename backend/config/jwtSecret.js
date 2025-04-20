@@ -1,11 +1,4 @@
-// backend/config/jwtSecret.js
-const config = require('./config'); // Adjust path if needed
-
-if (!config.JWT_SECRET) {
-  console.error("FATAL ERROR: JWT_SECRET is not defined in environment variables.");
-  process.exit(1); // Exit if secret is missing
-}
-
+const secret = 'your_jwt_secret'; // Replace with your actual secret
 module.exports = {
-    secret: config.JWT_SECRET
+    secret
 };
