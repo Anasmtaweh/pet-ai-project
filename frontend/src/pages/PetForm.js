@@ -19,7 +19,7 @@ function PetForm() {
     const [species, setSpecies] = useState('');
     const [breed, setBreed] = useState('');
     const [medicalInfo, setMedicalInfo] = useState('');
-    // const [pictures, setPictures] = useState([]); // Removed state for pictures
+    const [pictureFile, setPictureFile] = useState(null); // State to hold the selected file object
     const [gender, setGender] = useState('');
     const [error, setError] = useState('');
     const [isOtherBreed, setIsOtherBreed] = useState(false);
@@ -41,11 +41,20 @@ function PetForm() {
         "Siberian", "Cornish Rex", "Other"
     ];
 
+    // --- Handler for file input change ---
+    const handlePictureChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setPictureFile(e.target.files[0]); // Store the first selected file object
+        } else {
+            setPictureFile(null);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        // --- Validations ---
+        // --- Validations (Keep these) ---
         if (!name.trim()) { setError('Pet name is required.'); return; }
         if (isNaN(ageYears) || ageYears < 0) { setError('Invalid age in years (0 or greater).'); return; }
         if (isNaN(ageMonths) || ageMonths < 0 || ageMonths > 11) { setError('Invalid age in months (0-11).'); return; }
@@ -58,7 +67,6 @@ function PetForm() {
         }
         // --- End Validations ---
 
-
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -68,29 +76,32 @@ function PetForm() {
             const decodedToken = JSON.parse(atob(token.split('.')[1]));
             const owner = decodedToken.id;
 
-            // --- Create a plain JavaScript object instead of FormData ---
-            // This allows the backend's express.json() middleware to parse it.
-            // NOTE: File uploads (pictures) are NOT supported with this method.
-            const petData = {
-                name: name,
-                ageYears: Number(ageYears),
-                ageMonths: Number(ageMonths),
-                weight: Number(weight),
-                species: species,
-                gender: gender,
-                // Use the current breed value (handles 'Other' text input correctly)
-                breed: breed,
-                medicalInfo: medicalInfo,
-                owner: owner,
-                // pictures: [] // Cannot send files this way
-            };
+            // --- Create FormData to send multipart data ---
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('ageYears', ageYears);
+            formData.append('ageMonths', ageMonths);
+            formData.append('weight', weight);
+            formData.append('species', species);
+            formData.append('gender', gender);
+            formData.append('breed', breed);
+            formData.append('medicalInfo', medicalInfo);
+            formData.append('owner', owner);
+
+            // Append the picture file if one was selected
+            if (pictureFile) {
+                // The key 'picture' MUST match the field name used in multer on the backend (upload.single('picture'))
+                formData.append('picture', pictureFile);
+            }
+            // --- End FormData creation ---
 
 
-            // --- Send the plain object (Axios will set Content-Type: application/json) ---
-            const response = await axios.post('https://mishtika.duckdns.org/pets/add', petData, { // Send petData object
+            // --- Send the FormData object ---
+            // Axios will automatically set Content-Type to multipart/form-data
+            const response = await axios.post('https://mishtika.duckdns.org/pets/add', formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    // 'Content-Type': 'application/json' // Axios usually sets this automatically for objects
+                    // 'Content-Type': 'multipart/form-data' // Axios sets this automatically for FormData
                 },
             });
 
@@ -106,12 +117,14 @@ function PetForm() {
                 // Extract Mongoose validation errors
                 const details = err.response.data.details;
                 errorMsg = Object.values(details).map(detail => detail.message).join(' ');
+            } else if (err.message) { // Handle network or other errors
+                errorMsg = err.message;
             }
             setError(errorMsg);
         }
     };
 
-    // --- Handlers (No changes needed for most, removed picture handler) ---
+    // --- Other Handlers (No changes needed) ---
     const handleAgeYearsChange = (e) => { setAgeYears(e.target.value); };
     const handleAgeMonthsChange = (e) => { setAgeMonths(e.target.value); };
     const handleWeightChange = (e) => { setWeight(e.target.value); };
@@ -134,7 +147,7 @@ function PetForm() {
         }
     };
     const handleGenderChange = (e) => { setGender(e.target.value); };
-    // const handlePictureChange = (e) => { setPictures(e.target.files); }; // Removed picture handler
+
 
     return (
         <Container className={`${styles.petFormContainer} mt-5`}>
@@ -265,13 +278,18 @@ function PetForm() {
                     <Form.Control className={styles.formControl} as="textarea" rows={3} value={medicalInfo} onChange={(e) => setMedicalInfo(e.target.value)} />
                 </Form.Group>
 
-                {/* Pictures Input Removed */}
-                {/*
+                {/* --- Pictures Input Re-enabled --- */}
                 <Form.Group className="mb-3">
-                    <Form.Label className={styles.formLabel}>Pictures (Optional)</Form.Label>
-                    <Form.Control className={styles.formControl} type="file" multiple onChange={handlePictureChange} accept="image/*" />
+                    <Form.Label className={styles.formLabel}>Picture (Optional)</Form.Label>
+                    <Form.Control
+                        className={styles.formControl}
+                        type="file"
+                        name="picture" // Name attribute MUST match multer field name ('picture')
+                        onChange={handlePictureChange}
+                        accept="image/jpeg, image/png, image/gif, image/webp" // Specify accepted types
+                    />
                 </Form.Group>
-                */}
+                {/* --- End Pictures Input --- */}
 
                 <Button className={styles.petFormButton} variant="primary" type="submit">Add Pet</Button>
             </Form>
