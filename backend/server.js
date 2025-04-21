@@ -7,10 +7,10 @@ const config = require('./config/config');
 const authRoutes = require('./routes/auth');
 const petRoutes = require('./routes/pets');
 const adminRoutes = require('./routes/admin');
-const scheduleRoutes = require('./routes/schedules'); // Corrected variable name
+const scheduleRoutes = require('./routes/schedules');
 const gptRoutes = require('./routes/gpt');
-const recentActivityRoutes = require('./routes/recentActivity'); // Added based on context
-const { authenticateToken } = require('./middleware/authMiddleware'); // Added based on context (assuming it exists)
+// const recentActivityRoutes = require('./routes/recentActivity'); // REMOVED - Caused MODULE_NOT_FOUND error
+const { authenticateToken } = require('./middleware/authMiddleware'); // Assuming this exists in middleware/authMiddleware.js
 const { version } = require('./package.json'); // Assuming package.json is in backend root
 
 const app = express();
@@ -75,7 +75,7 @@ app.use('/pets', authenticateToken, petRoutes);
 app.use('/admin', authenticateToken, adminRoutes); // Assuming admin routes also need auth
 app.use('/schedules', authenticateToken, scheduleRoutes);
 app.use('/gpt', authenticateToken, gptRoutes);
-app.use('/activity', authenticateToken, recentActivityRoutes); // Added based on context
+// app.use('/activity', authenticateToken, recentActivityRoutes); // REMOVED - Caused MODULE_NOT_FOUND error
 
 // --- Error Handling Middleware (Optional but Recommended) ---
 // Example: Basic error handler - place AFTER all routes
