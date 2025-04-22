@@ -80,5 +80,13 @@ jobs:
             --restart=unless-stopped \
             -p 3001:3001 \
             -e NODE_ENV=production \
+            -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+            -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+            -e AWS_REGION="${{ env.AWS_REGION }}" \ # Use global env var
+            -e S3_BUCKET_NAME="${{ secrets.S3_BUCKET_NAME }}" \
             -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            -e DB_URL="${{ secrets.DB_URL }}" \
+            -e EMAIL_USER="${{ secrets.EMAIL_USER }}" \
+            -e EMAIL_PASS="${{ secrets.EMAIL_PASS }}" \
+            -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
             $ECR_REGISTRY/$ECR_REPOSITORY:latest
