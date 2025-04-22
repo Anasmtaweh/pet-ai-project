@@ -37,6 +37,7 @@ jobs:
         id: login-ecr
         run: |
           echo "Attempting ECR login..."
+          # This login happens on the runner, uses runner's env vars correctly
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $ECR_REGISTRY
           echo "ECR login successful."
@@ -62,11 +63,10 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
 
           # Environment variables needed BY THE SCRIPT ITSELF (ECR login/pull)
+          # AWS_REGION removed from here as it was unreliable
           envs: >
             ECR_REGISTRY,
-            ECR_REPOSITORY,
-            AWS_REGION
-            # Note: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY are handled by the action context for login now
+            ECR_REPOSITORY
 
           # The script to execute on the EC2 instance
           script: |
@@ -80,8 +80,10 @@ jobs:
               echo "AWS CLI installed."
             fi
             echo "Logging into Amazon ECR via script..."
-            aws ecr get-login-password --region $AWS_REGION | \
-              docker login --username AWS --password-stdin $ECR_REGISTRY
+            # --- MODIFICATION: Use direct substitution for AWS_REGION ---
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+              docker login --username AWS --password-stdin $ECR_REGISTRY # ECR_REGISTRY from envs is likely fine
+            # --- END MODIFICATION ---
             echo "ECR login successful via script."
 
             IMAGE_NAME="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
@@ -126,7 +128,7 @@ jobs:
             # --- END DEBUG ---
 
             echo "Running new container: $CONTAINER_NAME"
-            # --- Actual command execution (NO changes needed here) ---
+            # --- Actual command execution ---
             docker run -d \
               --name $CONTAINER_NAME \
               --health-cmd="curl -sSf http://localhost:3001/health || exit 1" \
