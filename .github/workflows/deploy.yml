@@ -53,6 +53,23 @@ jobs:
           echo "Image pushed successfully."
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
+      # --- START: New Debug Step ---
+      - name: Debug Secret Lengths
+        run: |
+          echo "--- Checking Secret Lengths ---"
+          # Using printf instead of echo to avoid adding an extra newline character to the count
+          # Add 1 to expected lengths below if using echo instead of printf
+          printf "%s" "${{ secrets.AWS_ACCESS_KEY_ID }}" | wc -c | xargs -I {} echo "Length of AWS_ACCESS_KEY_ID: {} (Expected: 20)"
+          printf "%s" "${{ secrets.AWS_SECRET_ACCESS_KEY }}" | wc -c | xargs -I {} echo "Length of AWS_SECRET_ACCESS_KEY: {} (Expected: 40)"
+          printf "%s" "${{ secrets.S3_BUCKET_NAME }}" | wc -c | xargs -I {} echo "Length of S3_BUCKET_NAME: {} (Expected: length of bucket name)"
+          printf "%s" "${{ secrets.OPENAI_API_KEY }}" | wc -c | xargs -I {} echo "Length of OPENAI_API_KEY: {} (Expected: 172)"
+          printf "%s" "${{ secrets.DB_URL }}" | wc -c | xargs -I {} echo "Length of DB_URL: {} (Expected: length of connection string)"
+          printf "%s" "${{ secrets.EMAIL_USER }}" | wc -c | xargs -I {} echo "Length of EMAIL_USER: {} (Expected: length of email)"
+          printf "%s" "${{ secrets.EMAIL_PASS }}" | wc -c | xargs -I {} echo "Length of EMAIL_PASS: {} (Expected: length of password)"
+          printf "%s" "${{ secrets.JWT_SECRET }}" | wc -c | xargs -I {} echo "Length of JWT_SECRET: {} (Expected: 64)"
+          echo "--- Finished Checking Lengths ---"
+      # --- END: New Debug Step ---
+
       # --- Deploy to EC2 Step ---
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
@@ -63,7 +80,6 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
 
           # Environment variables needed BY THE SCRIPT ITSELF (ECR login/pull)
-          # AWS_REGION removed from here as it was unreliable
           envs: >
             ECR_REGISTRY,
             ECR_REPOSITORY
@@ -80,10 +96,9 @@ jobs:
               echo "AWS CLI installed."
             fi
             echo "Logging into Amazon ECR via script..."
-            # --- MODIFICATION: Use direct substitution for AWS_REGION ---
+            # Use direct substitution for AWS_REGION
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
               docker login --username AWS --password-stdin $ECR_REGISTRY # ECR_REGISTRY from envs is likely fine
-            # --- END MODIFICATION ---
             echo "ECR login successful via script."
 
             IMAGE_NAME="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
