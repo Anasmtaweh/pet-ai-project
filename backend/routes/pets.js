@@ -6,7 +6,7 @@ const path = require('path'); // To get file extensions
 const crypto = require('crypto'); // For unique filenames
 const Pet = require('../models/Pet');
 const User = require('../models/User');
-const RecentActivity = require('../models/RecentActivity');
+const RecentActivity = require('../models/RecentActivity'); // Assuming this model exists and is needed
 const { uploadFileToS3, deleteFileFromS3 } = require('../utils/s3Utils'); // Import S3 utils
 
 // --- Multer Configuration ---
@@ -48,16 +48,14 @@ router.post('/add', upload.single('picture'), async (req, res) => {
              console.error("Validation Failed - Missing Text Fields. Received body:", req.body);
              return res.status(400).json({ message: 'Name, species, gender, breed, and owner are required.' });
         }
+        // ... (other validations for age, weight, species, gender remain the same) ...
         if (ageYears === undefined || ageYears === null || isNaN(Number(ageYears)) || Number(ageYears) < 0) {
-            console.error("Validation Failed - Invalid ageYears. Received body:", req.body);
             return res.status(400).json({ message: 'Valid age in years (0 or greater) is required.' });
         }
         if (ageMonths === undefined || ageMonths === null || isNaN(Number(ageMonths)) || Number(ageMonths) < 0 || Number(ageMonths) > 11 ) {
-            console.error("Validation Failed - Invalid ageMonths. Received body:", req.body);
             return res.status(400).json({ message: 'Valid age in months (0-11) is required.' });
         }
          if (weight === undefined || weight === null || isNaN(Number(weight)) || Number(weight) <= 0) {
-            console.error("Validation Failed - Invalid weight. Received body:", req.body);
             return res.status(400).json({ message: 'Valid weight (greater than 0) is required.' });
         }
         if (!['Cat', 'Dog'].includes(species)) {
@@ -74,6 +72,7 @@ router.post('/add', upload.single('picture'), async (req, res) => {
         }
 
         let pictureUrl = null; // Initialize pictureUrl
+        let s3ObjectKey = null; // Store the key for potential rollback/logging
 
         // --- Handle File Upload to S3 ---
         if (req.file) {
@@ -82,21 +81,25 @@ router.post('/add', upload.single('picture'), async (req, res) => {
                 // Generate a unique file key for S3
                 const fileExtension = path.extname(req.file.originalname);
                 const uniqueFileName = `pet_${owner}_${crypto.randomBytes(16).toString('hex')}${fileExtension}`;
-                const s3Key = `pets/${uniqueFileName}`; // Store in a 'pets' folder in S3
+                // Define the full S3 key including prefix
+                s3ObjectKey = `uploads/pets/${uniqueFileName}`; // Store in uploads/pets/ prefix
 
-                // Upload using the utility function (assumes public-read ACL by default)
+                console.log(`Generated S3 Key: ${s3ObjectKey}`);
+
+                // Upload using the updated utility function
                 const s3Data = await uploadFileToS3({
                     fileBuffer: req.file.buffer,
-                    fileName: s3Key, // Use the generated key as the S3 object key
+                    fileName: s3ObjectKey, // Pass the full desired S3 key
                     mimetype: req.file.mimetype,
-                    // acl: 'public-read' // Default in s3Utils, change if needed
                 });
                 pictureUrl = s3Data.url; // Get the URL returned by the utility
                 console.log("Uploaded picture URL:", pictureUrl);
             } catch (uploadError) {
-                console.error("S3 Upload Error:", uploadError);
-                // Decide if upload failure should prevent pet creation
-                return res.status(500).json({ message: 'Failed to upload picture to storage.' });
+                // Log the specific error caught from s3Utils
+                console.error("S3 Upload Error in /pets/add route:", uploadError);
+                // Send specific error if available, otherwise generic
+                const errMsg = uploadError.message || 'Failed to upload picture to storage.';
+                return res.status(500).json({ message: errMsg });
             }
         } else {
             console.log("No picture file received for pet add.");
@@ -118,12 +121,15 @@ router.post('/add', upload.single('picture'), async (req, res) => {
         });
         await newPet.save();
 
-        await RecentActivity.create({
-            type: 'pet_added',
-            details: `New pet added: ${newPet.name}${pictureUrl ? ' with picture' : ''}`,
-            userId: newPet.owner,
-            petId: newPet._id,
-        });
+        // Add recent activity only after successful save
+        if (RecentActivity) { // Check if RecentActivity model was loaded
+            await RecentActivity.create({
+                type: 'pet_added',
+                details: `New pet added: ${newPet.name}${pictureUrl ? ' with picture' : ''}`,
+                userId: newPet.owner,
+                petId: newPet._id,
+            });
+        }
 
         res.status(201).json(newPet);
     } catch (error) {
@@ -131,11 +137,13 @@ router.post('/add', upload.single('picture'), async (req, res) => {
         // Handle potential multer errors (like file size limit)
         if (error instanceof multer.MulterError) {
              return res.status(400).json({ message: `File upload error: ${error.message}` });
-        } else if (error.message.includes('Invalid file type')) { // Check for custom fileFilter error
+        } else if (error.message?.includes('Invalid file type')) { // Check for custom fileFilter error
              return res.status(400).json({ message: error.message });
         } else if (error.name === 'ValidationError') {
+            // Mongoose validation errors
             return res.status(400).json({ message: 'Validation error', details: error.errors });
         }
+        // Generic server error
         res.status(500).json({ message: 'Server error adding pet.' });
     }
 });
@@ -153,7 +161,7 @@ router.get('/owner/:ownerId', async (req, res) => {
         }));
         res.json(petsWithOwnerNames);
     } catch (error) {
-        console.error(error);
+        console.error("Error fetching pets for owner:", error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -167,7 +175,7 @@ router.get('/', async (req, res) => {
         }
         res.json(pets);
     } catch (error) {
-        console.error(error);
+        console.error("Error fetching all pets:", error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -186,16 +194,17 @@ router.delete('/:id', async (req, res) => {
             const deletePromises = pet.pictures.map(pictureUrl => {
                 try {
                     // Extract the S3 key from the URL
+                    // Example URL: https://bucket-name.s3.region.amazonaws.com/uploads/pets/pet_ownerid_hash.png
                     const url = new URL(pictureUrl);
-                    const key = url.pathname.substring(1); // Remove leading '/'
+                    const key = url.pathname.substring(1); // Remove leading '/' -> uploads/pets/pet_ownerid_hash.png
                     if (key) {
                         console.log(`Attempting to delete S3 object: ${key}`);
-                        return deleteFileFromS3(key);
+                        return deleteFileFromS3(key); // Call utility function
                     }
                 } catch (urlError) {
                     console.error(`Invalid picture URL format, cannot delete from S3: ${pictureUrl}`, urlError);
                 }
-                return Promise.resolve(); // Resolve promise even if URL is bad/deletion fails
+                return Promise.resolve(); // Resolve promise even if URL is bad/deletion fails to avoid breaking Promise.all
             });
             await Promise.all(deletePromises); // Wait for all deletions to attempt
         }
@@ -203,13 +212,15 @@ router.delete('/:id', async (req, res) => {
         // 3. Delete the pet document from MongoDB
         await Pet.findByIdAndDelete(req.params.id);
 
-        // 4. Add recent activity
-        await RecentActivity.create({
-            type: 'pet_deleted',
-            details: `Pet deleted: ${pet.name}`,
-            userId: pet.owner,
-            petId: pet._id,
-        });
+        // 4. Add recent activity (Check if model exists)
+        if (RecentActivity) {
+            await RecentActivity.create({
+                type: 'pet_deleted',
+                details: `Pet deleted: ${pet.name}`,
+                userId: pet.owner, // Assuming owner field exists on pet schema
+                petId: pet._id,
+            });
+        }
 
         res.json({ message: 'Pet and associated pictures deleted' });
     } catch (error) {
@@ -227,7 +238,7 @@ router.get('/:id', async (req, res) => {
         }
         res.json(pet);
     } catch (error) {
-        console.error(error);
+        console.error("Error fetching pet by ID:", error);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -241,6 +252,7 @@ router.put('/:id', async (req, res) => {
         delete updateData.pictures;
 
         // Ensure numeric fields are numbers if they exist
+        // ... (numeric validation remains the same) ...
         if (updateData.ageYears !== undefined && updateData.ageYears !== null) {
              updateData.ageYears = Number(updateData.ageYears);
              if (isNaN(updateData.ageYears) || updateData.ageYears < 0) {
@@ -261,8 +273,8 @@ router.put('/:id', async (req, res) => {
         }
 
         const updatedPet = await Pet.findByIdAndUpdate(req.params.id, updateData, {
-             new: true,
-             runValidators: true
+             new: true, // Return the modified document
+             runValidators: true // Ensure schema validators (like enum) run on update
         });
 
         if (!updatedPet) {
