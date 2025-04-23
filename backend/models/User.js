@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
         validate: {
             validator: function (v) {
                 // Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (#, +, - included)
-                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#+-])[A-Za-z\d@$!%*?&#+-]{8,}$/.test(v);
+                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$.!%*?&#+-])[A-Za-z\d@$!%*?&#+-]{8,}$/.test(v);
             },
             message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
         },
