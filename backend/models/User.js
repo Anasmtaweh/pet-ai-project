@@ -1,4 +1,3 @@
-// c:\Users\Anas\M5\pet-ai-project\backend\models\User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
@@ -17,19 +16,10 @@ const userSchema = new mongoose.Schema({
         minlength: [8, 'Password must be at least 8 characters long'],
         validate: {
             validator: function (v) {
-                // --- UPDATED REGEX ---
-                // Password must contain:
-                // - at least one lowercase letter
-                // - at least one uppercase letter
-                // - at least one number
-                // - at least one special character from the set @$!%*?&#+-. (DOT INCLUDED)
-                // - be at least 8 characters long
-                // - contain only allowed characters (letters, digits, specified special chars including DOT)
-                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#+-.] )[A-Za-z\d@$!%*?&#+-.] {8,}$/.test(v);
-                // --- END UPDATED REGEX ---
+                // Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (#, +, - included)
+                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#+\-.])[A-Za-z\d@$!%*?&#+\-.]{8,}$/.test(v);
             },
-            // Updated message to include the dot
-            message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, one special character (@$!%*?&#+-.), and be at least 8 characters long.',
+            message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
         },
     },
     username: {
@@ -60,19 +50,11 @@ const userSchema = new mongoose.Schema({
 
 // Hash the password before saving the user
 userSchema.pre('save', async function (next) {
-    // Only hash the password if it has been modified (or is new)
-    // Use isModified to prevent rehashing if other fields are updated
-    if (!this.isModified('password')) return next();
-
-    try {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (error) {
-        next(error); // Pass error to Mongoose
+    if (this.isModified('password')) {
+        this.password = await bcrypt.hash(this.password, 10);
     }
+    next();
 });
-
 
 const User = mongoose.model('User', userSchema, 'users');
 
