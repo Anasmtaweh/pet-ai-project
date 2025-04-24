@@ -16,6 +16,7 @@ const cron = require('node-cron'); // Ensure 'node-cron' is installed
 const moment = require('moment-timezone'); // Ensure 'moment-timezone' is installed
 const Schedule = require('./models/Schedule');
 const User = require('./models/User'); // Needed if not populating email during Schedule find
+const SentReminder = require('./models/SentReminder'); // <-- IMPORT NEW MODEL
 const { generateOccurrencesInRange } = require('./utils/scheduleUtils'); // Ensure this file exists and is correct
 const { sendReminderEmail } = require('./utils/mailer'); // Ensure this file exists and is correct
 // --- End Reminder System Imports ---
@@ -80,101 +81,111 @@ app.use('/gpt', gptRoutes);
 // --- End Routes ---
 
 
-// --- START: Reminder Cron Job Setup (UTC Focused) ---
-// Ensure necessary packages are installed: npm install node-cron moment-timezone
-const reminderJobTimezone = "Asia/Beirut"; // Define timezone for scheduling and logging
+// --- START: Reminder Cron Job Setup (WITH DUPLICATE PREVENTION) ---
+const reminderJobTimezone = "Asia/Beirut";
 console.log(`Scheduling reminder job with timezone: ${reminderJobTimezone}`);
 
 cron.schedule('*/15 * * * *', async () => { // Run every 15 minutes
-    const jobStartTime = moment(); // Use moment() which respects system time initially
+    const jobStartTime = moment();
     console.log(`[${jobStartTime.tz(reminderJobTimezone).format()}] Running reminder check job...`);
 
-    // --- Calculate window in UTC ---
-    // Get current time in UTC, add offsets
     const reminderWindowStartUTC = moment.utc().add(59, 'minutes');
-    const reminderWindowEndUTC = moment.utc().add(74, 'minutes'); // 15 min window (59 to 74 mins from now)
+    const reminderWindowEndUTC = moment.utc().add(74, 'minutes');
     console.log(`Reminder Window (UTC): [${reminderWindowStartUTC.toISOString()}, ${reminderWindowEndUTC.toISOString()})`);
-    // --- End UTC Window Calculation ---
 
     try {
-        // Find rules and populate owner's email for sending reminders
-        // Consider adding filters like { repeat: true } or based on activity if needed
-        const rules = await Schedule.find().populate('owner', 'email'); // Populate owner email
+        const rules = await Schedule.find().populate('owner', 'email');
 
         if (!rules || rules.length === 0) {
             console.log("No schedule rules found for reminder check.");
-            // No return needed here, just proceed to finish log
         } else {
             let upcomingOccurrences = [];
             rules.forEach(rule => {
-                // Generate occurrences within the UTC window
-                // Pass JS Date objects (which represent UTC time) to the utility
                 const occurrences = generateOccurrencesInRange(
                     rule,
                     reminderWindowStartUTC.toDate(),
                     reminderWindowEndUTC.toDate()
                 );
-                if (occurrences.length > 0) {
-                    // console.log(`Found ${occurrences.length} occurrences for rule ${rule._id}`); // Optional detailed log
-                    upcomingOccurrences.push(...occurrences);
-                }
+                upcomingOccurrences.push(...occurrences);
             });
 
             console.log(`Found ${upcomingOccurrences.length} total upcoming occurrences in the window.`);
 
-            // Process reminders for found occurrences
             for (const occurrence of upcomingOccurrences) {
-                // --- TODO: Implement robust duplicate prevention ---
-                // This is crucial to avoid sending multiple reminders for the same event.
-                // Example Strategy:
-                // 1. Define a unique key for the reminder: `${occurrence.ruleId}_${occurrence.start.getTime()}`
-                // 2. Check if this key exists in a 'sent reminders' cache (e.g., Redis, another DB collection) with an expiry.
-                // 3. If not found: proceed to send, then add the key to the cache with an expiry (e.g., 1 hour).
-                // 4. If found: skip sending.
-                // console.log(`Checking duplicate prevention for: ${occurrence.ruleId}_${occurrence.start.getTime()}`); // Placeholder
-                let reminderAlreadySent = false; // Replace with actual check
-                // --- End TODO ---
+                // --- START: Duplicate Prevention Check ---
+                const reminderKey = `${occurrence.ruleId}_${occurrence.start.getTime()}`; // Unique key: ruleId + UTC timestamp ms
+                let reminderAlreadySent = false;
+                try {
+                    // Check if a reminder record with this key already exists
+                    const existingReminder = await SentReminder.findOne({ reminderKey: reminderKey });
+                    if (existingReminder) {
+                        reminderAlreadySent = true;
+                        console.log(`Reminder already sent for key ${reminderKey}, skipping.`);
+                    }
+                } catch (checkError) {
+                    console.error(`Error checking for existing reminder ${reminderKey}:`, checkError);
+                    // If DB check fails, skip this occurrence to be safe
+                    continue;
+                }
+                // --- END: Duplicate Prevention Check ---
 
                 if (reminderAlreadySent) {
-                    // console.log(`Reminder already sent for "${occurrence.title}" at ${moment(occurrence.start).tz(reminderJobTimezone).format()}, skipping.`);
-                    continue; // Skip to the next occurrence
+                    continue; // Skip to the next occurrence if already sent
                 }
 
-                // Check if owner and email are populated correctly
+                // Proceed only if reminder was NOT already sent
                 if (occurrence.ownerId && occurrence.ownerId.email) {
-                    // Log the event time in the target timezone for clarity
                     const eventStartTimeLocal = moment(occurrence.start).tz(reminderJobTimezone).format('h:mm a');
                     console.log(`Attempting to send reminder for "${occurrence.title}" (Starts: ${eventStartTimeLocal}) to ${occurrence.ownerId.email}`);
                     try {
+                        // Attempt to send the email
                         await sendReminderEmail(
                             occurrence.ownerId.email,
                             occurrence.title,
                             occurrence.start // Pass the JS Date object (UTC)
                         );
-                        // --- TODO: Mark reminder as sent after successful sending ---
-                        // e.g., add `${occurrence.ruleId}_${occurrence.start.getTime()}` to cache/DB
-                        // console.log(`Marking reminder as sent for: ${occurrence.ruleId}_${occurrence.start.getTime()}`); // Placeholder
-                        // --- End TODO ---
+
+                        // --- START: Mark Reminder as Sent (AFTER successful send) ---
+                        try {
+                            const newSentReminder = new SentReminder({
+                                reminderKey: reminderKey,
+                                ruleId: occurrence.ruleId,
+                                occurrenceStartTime: occurrence.start,
+                                recipientEmail: occurrence.ownerId.email
+                                // sentAt will default to Date.now()
+                            });
+                            await newSentReminder.save(); // Save the record to DB
+                            console.log(`Marked reminder as sent for key ${reminderKey}`);
+                        } catch (saveError) {
+                            // Handle potential race condition where another process saved the key just now
+                            if (saveError.code === 11000) { // MongoDB duplicate key error code
+                                console.warn(`Race condition: Reminder ${reminderKey} was likely marked as sent by another process.`);
+                            } else {
+                                // Log other save errors but don't necessarily stop the job
+                                console.error(`Error marking reminder ${reminderKey} as sent:`, saveError);
+                            }
+                        }
+                        // --- END: Mark Reminder as Sent ---
+
                     } catch (emailError) {
                         console.error(`Error sending reminder email for rule ${occurrence.ruleId}, occurrence start ${occurrence.start.toISOString()}:`, emailError);
-                        // Decide if you want to continue processing other reminders or stop
+                        // Decide if you want to retry or just log
                     }
                 } else {
                     console.warn(`Cannot send reminder for rule ${occurrence.ruleId}, occurrence start ${occurrence.start.toISOString()}: Owner or owner email not found/populated.`);
                 }
-            }
-        }
+            } // End for loop
+        } // End else block
 
     } catch (error) {
         console.error("Error during reminder check job:", error);
     }
-     // Log job finish time using the target timezone
      console.log(`[${moment().tz(reminderJobTimezone).format()}] Reminder check job finished.`);
 }, {
     scheduled: true,
-    timezone: reminderJobTimezone // Use the defined timezone for CRON scheduling
+    timezone: reminderJobTimezone
 });
-console.log(`Reminder cron job scheduled to run every 15 minutes (Timezone: ${reminderJobTimezone}).`);
+console.log(`Reminder cron job scheduled (UTC focused, with duplicate prevention).`);
 // --- END: Reminder Cron Job Setup ---
 
 
@@ -183,4 +194,3 @@ app.listen(port, () => {
     console.log(`Backend server is running on port ${port}`);
 });
 // --- End Start Server ---
-
