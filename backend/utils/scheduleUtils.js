@@ -50,10 +50,16 @@ const generateOccurrencesInRange = (rule, windowStart, windowEnd) => {
             const occurrenceStart = current.clone().set({ hour: ruleStartTime.hour(), minute: ruleStartTime.minute(), second: ruleStartTime.second() });
             const occurrenceEnd = occurrenceStart.clone().add(dailyDuration);
 
+            // --- ADD LOGGING ---
+            // console.log(`[Debug Rule ${rule._id}] Checking Occurrence: ${occurrenceStart.toISOString()} (${occurrenceStart.format()}) against Window: ${moment(windowStart).toISOString()} - ${moment(windowEnd).toISOString()}`);
+            // --- END LOGGING ---
+
+
             // Check if this occurrence START time falls within the query window AND is not an exception
             if (occurrenceStart.isBetween(windowStart, windowEnd, undefined, '[)') && // Use [) - inclusive start, exclusive end
                 !exceptionTimestamps.has(occurrenceStart.valueOf()))
             {
+                // console.log(`[Debug Rule ${rule._id}]   -> MATCH FOUND!`); // Log if it matches
                 occurrences.push({
                     // Include necessary info for the reminder
                     ruleId: rule._id,
