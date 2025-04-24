@@ -10,7 +10,12 @@ const adminRoutes = require('./routes/admin');
 const scheduleRoutes = require('./routes/schedules');
 const gptRoutes = require('./routes/gpt');
 const { version } = require('./package.json'); // Keep version import
-
+const cron = require('node-cron'); // Import node-cron (npm install node-cron)
+const moment = require('moment'); // Import moment (already installed)
+const Schedule = require('./models/Schedule'); // Import Schedule model
+const User = require('./models/User'); // Import User model (needed if not populating email)
+const { generateOccurrencesInRange } = require('./utils/scheduleUtils'); // Import backend occurrence generator (YOU NEED TO CREATE THIS FILE)
+const { sendReminderEmail } = require('./utils/mailer'); // Import mailer utility
 const app = express();
 const port = 3001; // Using the hardcoded port from your old version
 
@@ -72,7 +77,57 @@ app.use('/admin', adminRoutes);
 app.use('/schedules', scheduleRoutes);
 app.use('/gpt', gptRoutes);
 // NOTE: No /activity route as it wasn't in your old version
+cron.schedule('*/15 * * * *', async () => {
+    console.log(`[${moment().format()}] Running reminder check job...`);
 
+    const reminderWindowStart = moment().add(59, 'minutes'); // Check for events starting ~1 hour from now
+    const reminderWindowEnd = moment().add(74, 'minutes'); // Window ends 15 mins later
+
+    try {
+        // Find rules and populate owner's email
+        const rules = await Schedule.find().populate('owner', 'email');
+
+        if (!rules || rules.length === 0) {
+            console.log("No schedule rules found for reminder check.");
+            return;
+        }
+
+        let upcomingOccurrences = [];
+        rules.forEach(rule => {
+            // Generate occurrences for the specific reminder window using the backend utility
+            const occurrences = generateOccurrencesInRange(rule, reminderWindowStart.toDate(), reminderWindowEnd.toDate());
+            upcomingOccurrences.push(...occurrences);
+        });
+
+        console.log(`Found ${upcomingOccurrences.length} upcoming occurrences in the next window.`);
+
+        // Process reminders
+        for (const occurrence of upcomingOccurrences) {
+            // TODO: Implement robust duplicate prevention here!
+            // Check if a reminder for occurrence.ruleId + occurrence.start has already been sent.
+
+            if (occurrence.ownerId && occurrence.ownerId.email) { // Check if owner and email exist
+                console.log(`Sending reminder for "${occurrence.title}" to ${occurrence.ownerId.email}`);
+                await sendReminderEmail(
+                    occurrence.ownerId.email,
+                    occurrence.title,
+                    occurrence.start
+                );
+                // TODO: Mark reminder as sent after successful sending.
+            } else {
+                console.warn(`Cannot send reminder for rule ${occurrence.ruleId}: Owner email not found.`);
+            }
+        }
+
+    } catch (error) {
+        console.error("Error during reminder check job:", error);
+    }
+     console.log(`[${moment().format()}] Reminder check job finished.`);
+}, {
+    scheduled: true,
+    timezone: "Asia/Beirut" // Set to your server's or target timezone
+});
+console.log("Reminder cron job scheduled (conceptual).");
 // Start the server
 app.listen(port, () => {
     console.log(`Backend server is running on port ${port}`);

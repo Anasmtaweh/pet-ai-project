@@ -22,7 +22,7 @@ function Signup() {
         setError(''); // Clear previous errors
 
         // Basic password validation on the frontend
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#+-])[A-Za-z\d@$!%*?&#+-]{8,}$/; // Updated regex here
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#+\-.])[A-Za-z\d@$!%*?&#+\-.]{8,}$/; // Updated regex here
         if (!passwordRegex.test(password)) {
             setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character, and be at least 8 characters long');
             return;

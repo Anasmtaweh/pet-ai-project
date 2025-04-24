@@ -71,5 +71,41 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+router.post('/:id/exception', async (req, res) => {
+    try {
+        const { occurrenceDate } = req.body; // Expecting the specific start date of the occurrence
+        const ruleId = req.params.id;
+
+        if (!occurrenceDate) {
+            return res.status(400).json({ message: 'Occurrence date is required.' });
+        }
+
+        const validDate = new Date(occurrenceDate);
+        if (isNaN(validDate)) {
+             return res.status(400).json({ message: 'Invalid occurrence date format provided.' });
+        }
+
+        // Find the rule and add the date to the exceptions array
+        // Using $addToSet to prevent duplicate exception dates
+        const updatedSchedule = await Schedule.findByIdAndUpdate(
+            ruleId,
+            { $addToSet: { exceptionDates: validDate } },
+            { new: true } // Return the updated document
+        );
+
+        if (!updatedSchedule) {
+            return res.status(404).json({ message: 'Schedule rule not found' });
+        }
+
+        // Optional: Add recent activity? Maybe not necessary for exceptions.
+
+        res.json({ message: 'Occurrence marked as exception.', schedule: updatedSchedule });
+
+    } catch (error) {
+        console.error("Error adding schedule exception:", error);
+        res.status(500).json({ message: 'Server error adding exception' });
+    }
+});
+
 module.exports = router;
 

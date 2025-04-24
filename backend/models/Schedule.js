@@ -37,6 +37,11 @@ const scheduleSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
+    exceptionDates: {
+        type: [Date], // Array of specific start times to exclude
+        default: [],
+    }
+    // --- END ADDED ---
 }, {
     timestamps: true,
 });

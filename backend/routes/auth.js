@@ -5,22 +5,16 @@ const User = require('../models/User');
 const PasswordResetToken = require('../models/PasswordResetToken');
 const RecentActivity = require('../models/RecentActivity');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 const config = require('../config/config');
 const jwtSecret = require('../config/jwtSecret');
 const adminMiddleware = require('../middleware/adminMiddleware');
 const userMiddleware = require('../middleware/userMiddleware');
+const { sendPasswordResetEmail } = require('../utils/mailer');
 
 const router = express.Router();
 
 // Nodemailer transporter setup
-const transporter = nodemailer.createTransport({
-    service: 'gmail', // Or your email service
-    auth: {
-        user: config.EMAIL_USER,
-        pass: config.EMAIL_PASS,
-    },
-});
+
 
 // Signup route
 router.post('/signup', async (req, res) => {
@@ -159,13 +153,19 @@ router.put('/settings/profile', userMiddleware, async (req, res) => {
     }
 });
 // Forgot Password Route
+
 router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
+        if (!email) {
+             return res.status(400).json({ message: 'Email is required' });
+        }
         const user = await User.findOne({ email });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            // Still return 200 to prevent email enumeration
+            console.log(`Forgot password attempt for non-existent email: ${email}`);
+            return res.status(200).json({ message: 'If an account with that email exists, a password reset email has been sent.' });
         }
 
         // Generate and save reset token
@@ -176,21 +176,16 @@ router.post('/forgot-password', async (req, res) => {
         });
         await passwordResetToken.save();
 
-        // Send reset email
-        const resetLink = `http://localhost:3000/reset-password/${token}`; // Frontend reset link
-        const mailOptions = {
-            from: config.EMAIL_USER,
-            to: user.email,
-            subject: 'Password Reset',
-            html: `<p>You requested a password reset. Click <a href="${resetLink}">here</a> to reset your password.</p>`,
-        };
+        // --- Use the imported mailer function ---
+        await sendPasswordResetEmail(user.email, token);
+        // --- End Use mailer function ---
 
-        await transporter.sendMail(mailOptions);
-
-        res.status(200).json({ message: 'Password reset email sent' });
+        res.status(200).json({ message: 'If an account with that email exists, a password reset email has been sent.' });
     } catch (error) {
         console.error('Error in forgot password:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        // Check if the error came from the mailer (if mailer throws errors)
+        // Or just send a generic error
+        res.status(500).json({ message: 'Internal server error processing request.' });
     }
 });
 

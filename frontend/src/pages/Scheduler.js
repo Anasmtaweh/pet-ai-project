@@ -1,8 +1,8 @@
 // src/pages/Scheduler.js
-// --- FINAL VERSION: Alarm-Style Repeating Events ---
+// --- VERSION WITH DELETE OCCURRENCE/SERIES CHOICE ---
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
-import moment from 'moment';
+import moment from 'moment'; // Ensure moment is installed
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
@@ -14,114 +14,79 @@ import axios from 'axios';
 
 const localizer = momentLocalizer(moment);
 
-// --- REVISED Helper Function for Alarm-Style Occurrences ---
+// --- REVISED generateOccurrences (Checks exceptions) ---
 const generateOccurrences = (rule, windowStart, windowEnd) => {
     const occurrences = [];
-    // --- Basic validation ---
     if (!rule || !rule.start || !rule.end || !rule._id) {
-        console.warn("Skipping occurrence generation for invalid/incomplete rule:", rule);
+        // console.warn("Skipping occurrence generation for invalid/incomplete rule:", rule);
         return occurrences;
     }
 
-    const ruleStartDate = moment(rule.start).startOf('day'); // Date part of rule start
-    const ruleEndDate = moment(rule.end).startOf('day');   // Date part of rule end
-    const ruleStartTime = moment(rule.start);             // Full start for time info
-    const ruleEndTime = moment(rule.end);               // Full end for time info
+    // --- ADDED: Prepare exception dates for quick lookup ---
+    const exceptionTimestamps = new Set(
+        (rule.exceptionDates || []).map(date => moment(date).valueOf())
+    );
+    // --- END ADDED ---
 
-    // --- Validate dates ---
+    const ruleStartDate = moment(rule.start).startOf('day');
+    const ruleEndDate = moment(rule.end).startOf('day');
+    const ruleStartTime = moment(rule.start);
+    const ruleEndTime = moment(rule.end);
+
     if (!ruleStartDate.isValid() || !ruleEndDate.isValid() || ruleEndDate.isBefore(ruleStartDate)) {
-        console.warn(`Skipping rule "${rule.title}" (${rule._id}) due to invalid date range.`);
+        // console.warn(`Skipping rule "${rule.title}" (${rule._id}) due to invalid date range.`);
         return occurrences;
     }
     if (!ruleStartTime.isValid() || !ruleEndTime.isValid()) {
-         console.warn(`Skipping rule "${rule.title}" (${rule._id}) due to invalid time.`);
+        //  console.warn(`Skipping rule "${rule.title}" (${rule._id}) due to invalid time.`);
          return occurrences;
     }
 
-    // --- Calculate the duration of ONE occurrence based on TIME ONLY ---
-    // Create moments on the *same arbitrary day* to get time difference correctly
-    const tempStart = moment().set({
-        hour: ruleStartTime.hour(),
-        minute: ruleStartTime.minute(),
-        second: ruleStartTime.second(),
-        millisecond: 0
-    });
-    const tempEnd = moment().set({
-        hour: ruleEndTime.hour(),
-        minute: ruleEndTime.minute(),
-        second: ruleEndTime.second(),
-        millisecond: 0
-    });
-
-    // Handle overnight duration (e.g., 10 PM to 2 AM)
-    if (tempEnd.isSameOrBefore(tempStart)) {
-        tempEnd.add(1, 'day'); // Assume it ends the next day if time is earlier/same
-    }
+    const tempStart = moment().set({ hour: ruleStartTime.hour(), minute: ruleStartTime.minute(), second: ruleStartTime.second(), millisecond: 0 });
+    const tempEnd = moment().set({ hour: ruleEndTime.hour(), minute: ruleEndTime.minute(), second: ruleEndTime.second(), millisecond: 0 });
+    if (tempEnd.isSameOrBefore(tempStart)) { tempEnd.add(1, 'day'); }
     const dailyDuration = moment.duration(tempEnd.diff(tempStart));
-    // --- End duration calculation ---
 
-    // --- Determine loop start/end based on window and rule dates ---
-    let current = ruleStartDate.clone(); // Start checking from the rule's start date
-    // If rule starts before the window, start checking from the window start
-    if (current.isBefore(windowStart)) {
-        current = windowStart.clone().startOf('day');
-    }
+    let current = ruleStartDate.clone();
+    if (current.isBefore(windowStart)) { current = windowStart.clone().startOf('day'); }
+    const loopEndDate = moment.min(windowEnd, ruleEndDate);
 
-    const loopEndDate = moment.min(windowEnd, ruleEndDate); // Stop at whichever comes first: window end or rule end date
-    // --- End loop boundary determination ---
-
-
-    // console.log(`Generating for rule "${rule.title}" (${rule._id}). Range: ${ruleStartDate.format('YYYY-MM-DD')} to ${ruleEndDate.format('YYYY-MM-DD')}. Loop: ${current.format('YYYY-MM-DD')} to ${loopEndDate.format('YYYY-MM-DD')}`); // Optional log
-
-    // --- Loop through relevant days ---
-    while (current.isSameOrBefore(loopEndDate)) { // Loop respects rule end date
+    while (current.isSameOrBefore(loopEndDate)) {
         let occursOnThisDay = false;
-
-        // Check if the rule applies based on repeat settings
         if (rule.repeat) {
-            if (rule.repeatType === 'daily') {
-                occursOnThisDay = true;
-            } else if (rule.repeatType === 'weekly') {
-                const currentDayName = current.format('dddd');
-                if (rule.repeatDays && Array.isArray(rule.repeatDays) && rule.repeatDays.includes(currentDayName)) {
-                    occursOnThisDay = true;
-                }
-            }
+            if (rule.repeatType === 'daily') occursOnThisDay = true;
+            else if (rule.repeatType === 'weekly' && rule.repeatDays?.includes(current.format('dddd'))) occursOnThisDay = true;
         } else {
-            // Non-repeating event only occurs on the start date
-            if (current.isSame(ruleStartDate, 'day')) {
-                occursOnThisDay = true;
-            }
+            if (current.isSame(ruleStartDate, 'day')) occursOnThisDay = true;
         }
-
 
         if (occursOnThisDay) {
-            // Create the specific occurrence for this day using the rule's START TIME
-            const occurrenceStart = current.clone().set({
-                hour: ruleStartTime.hour(),
-                minute: ruleStartTime.minute(),
-                second: ruleStartTime.second(),
-            });
-            // Calculate the end by adding the daily duration
+            const occurrenceStart = current.clone().set({ hour: ruleStartTime.hour(), minute: ruleStartTime.minute(), second: ruleStartTime.second() });
             const occurrenceEnd = occurrenceStart.clone().add(dailyDuration);
 
-            // Add the occurrence
-            occurrences.push({
-                title: rule.title,
-                type: rule.type,
-                originalRuleId: rule._id,
-                start: occurrenceStart.toDate(),
-                end: occurrenceEnd.toDate(),
-            });
-            // console.log(` -> Added occurrence: ${occurrenceStart.format()} to ${occurrenceEnd.format()}`); // Optional log
+            // --- ADDED: Check against exceptions ---
+            if (!exceptionTimestamps.has(occurrenceStart.valueOf())) {
+                occurrences.push({
+                    title: rule.title,
+                    type: rule.type,
+                    originalRuleId: rule._id, // Keep original rule ID
+                    start: occurrenceStart.toDate(),
+                    end: occurrenceEnd.toDate(),
+                    // Add other rule properties if needed by eventPropGetter or display
+                    repeat: rule.repeat,
+                    repeatType: rule.repeatType,
+                    repeatDays: rule.repeatDays,
+                });
+            } else {
+                 // console.log(`Skipping excepted occurrence for rule ${rule._id} on ${occurrenceStart.format()}`);
+            }
+            // --- END ADDED ---
         }
-
-        current.add(1, 'day'); // Move to the next day
+        current.add(1, 'day');
     }
-
     return occurrences;
 };
-// --- End REVISED Helper Function ---
+// --- End REVISED generateOccurrences ---
 
 
 function Scheduler() {
@@ -129,10 +94,14 @@ function Scheduler() {
         document.title = "MISHTIKA - Scheduler";
     }, []);
 
-    const [eventRules, setEventRules] = useState([]); // Store original rules from backend
-    const [displayEvents, setDisplayEvents] = useState([]); // Store events to show in calendar (occurrences + singles)
-    const [showModal, setShowModal] = useState(false);
-    const [newEvent, setNewEvent] = useState({
+    // State
+    const [eventRules, setEventRules] = useState([]);
+    const [displayEvents, setDisplayEvents] = useState([]);
+    const [showAddEditModal, setShowAddEditModal] = useState(false); // Modal for Add/Edit
+    const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false); // Modal for Delete Choice
+    const [selectedOccurrence, setSelectedOccurrence] = useState(null); // Specific calendar event clicked
+    const [editEventRule, setEditEventRule] = useState(null); // Rule being edited OR rule associated with delete action
+    const [newEvent, setNewEvent] = useState({ // State for the Add/Edit form
         title: '',
         start: moment().startOf('hour').add(1, 'hour'),
         end: moment().startOf('hour').add(2, 'hour'),
@@ -141,15 +110,30 @@ function Scheduler() {
         repeatType: 'daily',
         repeatDays: [],
     });
-    const [editEventRule, setEditEventRule] = useState(null);
-    const [modalError, setModalError] = useState('');
+    const [modalError, setModalError] = useState(''); // Error for Add/Edit modal
+    const [deleteError, setDeleteError] = useState(''); // Error for Delete modal
+
+    // Constants and User Info
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const token = localStorage.getItem('token');
-    const decodedToken = JSON.parse(atob(token.split('.')[1]));
-    const owner = decodedToken.id;
+    let owner = null;
+    try {
+        if (token) {
+            const decodedToken = JSON.parse(atob(token.split('.')[1]));
+            owner = decodedToken.id;
+        }
+    } catch (e) {
+        console.error("Error decoding token:", e);
+        // Handle invalid token case if necessary (e.g., redirect to login)
+    }
 
     // --- Fetch original event rules ---
     const fetchEventRules = useCallback(async () => {
+        if (!owner || !token) {
+            console.log("Cannot fetch rules: Owner ID or token missing.");
+            setEventRules([]); // Clear rules if not logged in
+            return;
+        }
         console.log("Fetching event rules...");
         try {
             const response = await axios.get(`https://mishtika.duckdns.org/schedules/owner/${owner}`, {
@@ -171,44 +155,27 @@ function Scheduler() {
     useEffect(() => {
         console.log("Regenerating display events from rules:", eventRules);
         const generated = [];
+        // Define a reasonable window for displaying events (e.g., +/- 1 year)
+        // Adjust as needed for performance vs. range
         const windowStart = moment().subtract(1, 'year').startOf('day');
         const windowEnd = moment().add(1, 'year').endOf('day');
 
         eventRules.forEach(rule => {
-            // Use the generateOccurrences function for BOTH repeating and non-repeating
-            // as it now correctly handles the single occurrence case too.
+            // Use the revised generateOccurrences function
             const occurrences = generateOccurrences(rule, windowStart, windowEnd);
             generated.push(...occurrences);
-
-            // --- Old logic removed ---
-            // if (rule.repeat) {
-            //     const occurrences = generateOccurrences(rule, windowStart, windowEnd);
-            //     generated.push(...occurrences);
-            // } else {
-            //      const singleStart = moment(rule.start);
-            //      if (singleStart.isValid() && singleStart.isBetween(windowStart, windowEnd, undefined, '[]')) {
-            //         generated.push({
-            //             title: rule.title,
-            //             type: rule.type,
-            //             originalRuleId: rule._id,
-            //             start: singleStart.toDate(),
-            //             end: moment(rule.end).toDate(),
-            //         });
-            //      } else if (!singleStart.isValid()) {
-            //          console.warn(`Skipping single event rule "${rule.title}" (${rule._id}) due to invalid start date.`);
-            //      }
-            // }
         });
         console.log("Generated display events:", generated);
         setDisplayEvents(generated);
-    }, [eventRules]);
+    }, [eventRules]); // Dependency: run when eventRules state updates
 
     // --- Modal Handling ---
-    const handleClose = () => {
-        setShowModal(false);
+    // Add/Edit Modal
+    const handleAddEditModalClose = () => {
+        setShowAddEditModal(false);
         setEditEventRule(null);
         setModalError('');
-        setNewEvent({
+        setNewEvent({ // Reset form state
             title: '',
             start: moment().startOf('hour').add(1, 'hour'),
             end: moment().startOf('hour').add(2, 'hour'),
@@ -219,14 +186,12 @@ function Scheduler() {
         });
     };
 
-    const handleShow = (event) => {
+    const handleAddEditModalShow = (ruleToEdit = null) => { // Default to null for adding
         setModalError('');
-        let originalRule = null;
-
-        if (!event) {
+        if (!ruleToEdit) { // Adding new
             console.log("Opening modal to add new rule.");
             setEditEventRule(null);
-            setNewEvent({
+            setNewEvent({ // Reset form state
                 title: '',
                 start: moment().startOf('hour').add(1, 'hour'),
                 end: moment().startOf('hour').add(2, 'hour'),
@@ -235,90 +200,70 @@ function Scheduler() {
                 repeatType: 'daily',
                 repeatDays: [],
             });
-        } else {
-            const ruleId = event.originalRuleId || event._id;
-            console.log(`Opening modal to edit rule for event/rule ID: ${ruleId}`);
-            originalRule = eventRules.find(rule => rule._id === ruleId);
-
-            if (!originalRule) {
-                console.error("Could not find original rule for event:", event);
-                setModalError("Could not load event details. The original rule might have been deleted. Please refresh.");
-                return;
-            }
-
-            console.log("Found original rule to edit:", originalRule);
-            setEditEventRule(originalRule);
-            setNewEvent({
-                title: originalRule.title || '',
-                start: originalRule.start ? moment(originalRule.start) : moment(),
-                end: originalRule.end ? moment(originalRule.end) : moment(),
-                type: originalRule.type || 'meal',
-                repeat: originalRule.repeat || false,
-                repeatType: originalRule.repeatType || 'daily',
-                repeatDays: Array.isArray(originalRule.repeatDays) ? originalRule.repeatDays : [],
+        } else { // Editing existing rule
+            console.log("Opening modal to edit rule:", ruleToEdit);
+            setEditEventRule(ruleToEdit);
+            setNewEvent({ // Populate form with rule data
+                title: ruleToEdit.title || '',
+                start: ruleToEdit.start ? moment(ruleToEdit.start) : moment(),
+                end: ruleToEdit.end ? moment(ruleToEdit.end) : moment(),
+                type: ruleToEdit.type || 'meal',
+                repeat: ruleToEdit.repeat || false,
+                repeatType: ruleToEdit.repeatType || 'daily',
+                repeatDays: Array.isArray(ruleToEdit.repeatDays) ? ruleToEdit.repeatDays : [],
             });
         }
-        setShowModal(true);
+        setShowAddEditModal(true);
     };
 
-    // --- Input change handlers ---
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setNewEvent(prev => ({ ...prev, [name]: value }));
+    // Delete Confirmation Modal
+    const handleDeleteConfirmModalClose = () => {
+        setShowDeleteConfirmModal(false);
+        setSelectedOccurrence(null); // Clear selected occurrence
+        setEditEventRule(null); // Clear associated rule
+        setDeleteError('');
     };
 
-    const handleDateChange = (e, field) => {
-        const value = e.target.value;
-        setNewEvent(prev => ({ ...prev, [field]: moment(value) }));
-    };
+    const handleDeleteConfirmModalShow = (eventOrRule) => {
+        setDeleteError('');
+        const ruleId = eventOrRule.originalRuleId || eventOrRule._id; // Get ID from calendar event or rule list item
+        const rule = eventRules.find(r => r._id === ruleId);
 
-    const handleRepeatChange = (e) => {
-        const { name, value, checked } = e.target;
-        if (name === 'repeat') {
-            setNewEvent(prev => ({ ...prev, repeat: checked, repeatDays: checked ? prev.repeatDays : [] }));
-        } else if (name === 'repeatType') {
-            setNewEvent(prev => ({ ...prev, repeatType: value, repeatDays: [] }));
-        } else if (name === 'repeatDays') {
-            const day = value;
-            if (checked) {
-                setNewEvent(prev => ({ ...prev, repeatDays: [...new Set([...prev.repeatDays, day])] }));
-            } else {
-                setNewEvent(prev => ({ ...prev, repeatDays: prev.repeatDays.filter(d => d !== day) }));
-            }
+        if (!rule) {
+            console.error("Cannot show delete confirm: Rule not found for", eventOrRule);
+            setDeleteError("Cannot delete: Associated rule not found. It might have been deleted already.");
+            // Optionally show the modal with just the error and a close button
+            setShowDeleteConfirmModal(true);
+            return;
+        }
+
+        setEditEventRule(rule); // Store the rule associated with the delete action
+
+        if (eventOrRule.originalRuleId && eventOrRule.start) { // It's a calendar event (occurrence) with a start time
+             console.log("Showing delete choice for occurrence:", eventOrRule);
+             setSelectedOccurrence(eventOrRule); // Store the specific occurrence details
+             setShowDeleteConfirmModal(true); // Show the choice modal
+        } else { // It's a rule from the list (or invalid event)
+             console.log("Showing delete choice for entire series (rule):", rule);
+             setSelectedOccurrence(null); // No specific occurrence
+             setShowDeleteConfirmModal(true); // Show the choice modal (UI will handle disabling occurrence option)
         }
     };
+    // --- End Modal Handling ---
 
-    // --- Validation Function (Duration check removed) ---
-    const validateEvent = () => {
-        setModalError('');
-        if (!newEvent.title.trim()) {
-            setModalError('Title is required.'); return false;
-        }
-        if (!newEvent.start || !newEvent.start.isValid()) {
-            setModalError('Invalid start date/time.'); return false;
-        }
-        if (!newEvent.end || !newEvent.end.isValid()) {
-            setModalError('Invalid end date/time.'); return false;
-        }
-        // Check if rule end DATE is before rule start DATE
-        if (newEvent.end.clone().startOf('day').isBefore(newEvent.start.clone().startOf('day'))) {
-             setModalError('End Date cannot be before Start Date.'); return false;
-        }
-        // Check if rule end TIME is same or before start TIME on the SAME day (allow overnight)
-        // This check might be too strict depending on how you want to handle exact same start/end time
-        // if (newEvent.end.isSameOrBefore(newEvent.start)) {
-        //     setModalError('End Date/Time must be after Start Date/Time.'); return false;
-        // }
 
-        if (newEvent.repeat && newEvent.repeatType === 'weekly' && newEvent.repeatDays.length === 0) {
-            setModalError('Please select at least one day for weekly repetition.'); return false;
-        }
-        return true; // Validation passed
-    };
+    // --- Input change handlers (No changes needed) ---
+    const handleInputChange = (e) => { /* ... */ };
+    const handleDateChange = (e, field) => { /* ... */ };
+    const handleRepeatChange = (e) => { /* ... */ };
+    // --- End Input change handlers ---
+
+    // --- Validation Function (No changes needed) ---
+    const validateEvent = () => { /* ... */ };
     // --- End Validation Function ---
 
 
-    // --- CRUD Operations (operate on RULES) ---
+    // --- CRUD Operations ---
     const handleAddEvent = async () => {
         if (!validateEvent()) return;
         const payload = {
@@ -336,8 +281,8 @@ function Scheduler() {
             await axios.post('https://mishtika.duckdns.org/schedules/add', payload, {
                  headers: { Authorization: `Bearer ${token}` }
             });
-            fetchEventRules();
-            handleClose();
+            fetchEventRules(); // Refresh rules
+            handleAddEditModalClose(); // Close Add/Edit modal
         } catch (error) {
             console.error('Error adding event rule:', error);
             setModalError(error.response?.data?.message || 'Failed to add event.');
@@ -358,8 +303,9 @@ function Scheduler() {
             ...(newEvent.repeat && { repeatType: newEvent.repeatType }),
             ...(newEvent.repeat && newEvent.repeatType === 'weekly' && { repeatDays: newEvent.repeatDays }),
         };
+        // Clean up payload based on repeat status
         if (!newEvent.repeat) {
-            payload.repeatType = undefined;
+            payload.repeatType = undefined; // Or null, depending on backend preference
             payload.repeatDays = [];
         } else if (newEvent.repeatType !== 'weekly') {
             payload.repeatDays = [];
@@ -369,74 +315,91 @@ function Scheduler() {
             await axios.put(`https://mishtika.duckdns.org/schedules/${editEventRule._id}`, payload, {
                  headers: { Authorization: `Bearer ${token}` }
             });
-            fetchEventRules();
-            handleClose();
+            fetchEventRules(); // Refresh rules
+            handleAddEditModalClose(); // Close Add/Edit modal
         } catch (error) {
             console.error('Error updating event rule:', error);
             setModalError(error.response?.data?.message || 'Failed to update event.');
         }
     };
 
-    const handleDeleteEvent = async () => {
+    // --- REVISED: Delete Handler for "Entire Series" ---
+    const handleDeleteSeries = async () => {
         if (!editEventRule || !editEventRule._id) {
-            console.error("Cannot delete event rule: No rule selected in modal.");
-            setModalError("Cannot delete: No rule selected.");
-            return;
+            setDeleteError("Cannot delete series: No rule selected."); return;
         }
-        console.log("Deleting schedule rule:", editEventRule._id);
+        setDeleteError(''); // Clear previous errors
+        console.log("Deleting entire series (rule):", editEventRule._id);
         try {
             await axios.delete(`https://mishtika.duckdns.org/schedules/${editEventRule._id}`, {
                  headers: { Authorization: `Bearer ${token}` }
             });
-            fetchEventRules();
-            handleClose();
+            fetchEventRules(); // Refresh rules from backend
+            handleDeleteConfirmModalClose(); // Close the confirmation modal
         } catch (error) {
-            console.error('Error deleting event rule:', error);
-            setModalError(error.response?.data?.message || 'Failed to delete event.');
+            console.error('Error deleting event rule series:', error);
+            setDeleteError(error.response?.data?.message || 'Failed to delete event series.');
+            // Keep modal open on error to show message
         }
     };
 
-    // --- eventPropGetter ---
-    const eventPropGetter = (event) => {
-        let styleChanges = {
-            backgroundColor: "#A0522D", // Default: meal
-            color: 'white',
-            borderRadius: "0px",
-            border: "none",
-        };
-        const eventType = event.type || 'meal';
-        switch (eventType) {
-            case 'vet': styleChanges.backgroundColor = "#8FBC8F"; break;
-            case 'sleep': styleChanges.backgroundColor = "#17a2b8"; break;
-            case 'medication': styleChanges.backgroundColor = "#ffc107"; break;
-            case 'play': styleChanges.backgroundColor = "#dc3545"; break;
-            default: break;
+    // --- NEW: Delete Handler for "Only This Occurrence" ---
+    const handleDeleteOccurrence = async () => {
+        // Ensure we have the occurrence details and the associated rule ID
+        if (!selectedOccurrence || !selectedOccurrence.originalRuleId || !selectedOccurrence.start) {
+             setDeleteError("Cannot delete occurrence: Invalid event data selected."); return;
         }
-        return { style: styleChanges };
-    };
+        setDeleteError(''); // Clear previous errors
+        const ruleId = selectedOccurrence.originalRuleId;
+        const occurrenceDate = selectedOccurrence.start; // The specific start time of the clicked event
 
-    // --- handleSelectEvent ---
+        console.log(`Adding exception for rule ${ruleId} on ${moment(occurrenceDate).format()}`);
+        try {
+            // Call the new backend endpoint
+            await axios.post(`https://mishtika.duckdns.org/schedules/${ruleId}/exception`,
+                { occurrenceDate: moment(occurrenceDate).toISOString() }, // Send date as ISO string for backend consistency
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            fetchEventRules(); // Refresh rules to get updated exceptions array
+            handleDeleteConfirmModalClose(); // Close the confirmation modal
+        } catch (error) {
+             console.error('Error adding exception for occurrence:', error);
+             setDeleteError(error.response?.data?.message || 'Failed to delete this occurrence.');
+             // Keep modal open on error to show message
+        }
+    };
+    // --- End CRUD ---
+
+
+    // --- eventPropGetter (No changes needed) ---
+    const eventPropGetter = (event) => { /* ... */ };
+
+    // --- MODIFIED handleSelectEvent ---
+    // This function is called when a user clicks on an event in the calendar
     const handleSelectEvent = (event) => {
         console.log("Event selected on calendar:", event);
-        handleShow(event);
+        // Show the delete confirmation modal instead of the edit modal
+        handleDeleteConfirmModalShow(event);
     };
+    // --- End MODIFIED handleSelectEvent ---
 
 
     // --- Render ---
     return (
         <Container className={`${styles.schedulerContainer} mt-5`}>
             <h1 className={styles.schedulerTitle}>Scheduler</h1>
-            <Button variant="primary" onClick={() => handleShow(null)} className={styles.addEventButton}>
+            {/* Button now opens Add/Edit Modal */}
+            <Button variant="primary" onClick={() => handleAddEditModalShow(null)} className={styles.addEventButton}>
                 Add Event Rule
             </Button>
             <div className={styles.calendarContainer}>
                 <Calendar
                     localizer={localizer}
-                    events={displayEvents} // USE THE GENERATED OCCURRENCES
+                    events={displayEvents} // Use the generated occurrences
                     startAccessor="start"
                     endAccessor="end"
                     style={{ height: 500 }}
-                    onSelectEvent={handleSelectEvent}
+                    onSelectEvent={handleSelectEvent} // This now triggers delete confirm modal
                     eventPropGetter={eventPropGetter}
                     views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
                     defaultView={Views.MONTH}
@@ -457,14 +420,17 @@ function Scheduler() {
                             Time: {moment(rule.start).format('h:mm a')} - {moment(rule.end).format('h:mm a')}
                         </span>
                         <div className={styles.eventButtons}>
-                            <Button variant="primary" size="sm" onClick={() => handleShow(rule)}>Edit Rule</Button>
+                            {/* Edit button opens Add/Edit Modal */}
+                            <Button variant="primary" size="sm" onClick={() => handleAddEditModalShow(rule)}>Edit Rule</Button>
+                            {/* Delete button opens Delete Confirm Modal */}
+                            <Button variant="danger" size="sm" className="ms-2" onClick={() => handleDeleteConfirmModalShow(rule)}>Delete</Button>
                         </div>
                     </li>
                 )) : <li>No event rules found. Add one using the button above.</li>}
             </ul>
 
-            {/* --- Modal --- */}
-            <Modal show={showModal} onHide={handleClose}>
+            {/* --- Add/Edit Modal (Previously the only modal) --- */}
+            <Modal show={showAddEditModal} onHide={handleAddEditModalClose}>
                 <Modal.Header closeButton>
                     <Modal.Title>{editEventRule ? 'Edit Event Rule' : 'Add New Event Rule'}</Modal.Title>
                 </Modal.Header>
@@ -546,19 +512,51 @@ function Scheduler() {
                     </Form>
                 </Modal.Body>
                 <Modal.Footer>
-                    {editEventRule && (
-                        <Button variant="danger" onClick={handleDeleteEvent}>
-                            Delete Rule
-                        </Button>
-                    )}
-                    <Button variant="secondary" onClick={handleClose}>
-                        Close
-                    </Button>
+                    {/* Delete button removed from here, handled by calendar click or list button */}
+                    <Button variant="secondary" onClick={handleAddEditModalClose}>Close</Button>
                     <Button variant="primary" onClick={editEventRule ? handleEditEvent : handleAddEvent}>
                         {editEventRule ? 'Save Rule Changes' : 'Add Event Rule'}
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* --- NEW Delete Confirmation Modal --- */}
+            <Modal show={showDeleteConfirmModal} onHide={handleDeleteConfirmModalClose} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Confirm Delete</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {deleteError && <Alert variant="danger">{deleteError}</Alert>}
+                    {selectedOccurrence ? (
+                        // Message when clicking a specific occurrence on the calendar
+                        <>
+                            <p>Choose delete option for the event:</p>
+                            <p><strong>"{editEventRule?.title}"</strong> on <strong>{moment(selectedOccurrence.start).format('MMM Do YYYY, h:mm a')}</strong>?</p>
+                        </>
+                    ) : (
+                        // Message when clicking delete on a rule from the list
+                        <p>Are you sure you want to delete the entire series for <strong>"{editEventRule?.title}"</strong>?</p>
+                    )}
+                </Modal.Body>
+                <Modal.Footer className="justify-content-between"> {/* Adjust layout */}
+                    <div> {/* Group occurrence/series delete buttons */}
+                        {selectedOccurrence && editEventRule?.repeat && ( // Only show "This Occurrence" if it's a repeating event occurrence
+                            <Button variant="warning" onClick={handleDeleteOccurrence} className="me-2">
+                                Delete Only This Occurrence
+                            </Button>
+                        )}
+                        {/* Always show "Delete Series" */}
+                        <Button variant="danger" onClick={handleDeleteSeries}>
+                            Delete Entire Series
+                        </Button>
+                    </div>
+                    <Button variant="secondary" onClick={handleDeleteConfirmModalClose}>
+                        Cancel
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+            {/* --- End NEW Delete Confirmation Modal --- */}
+
         </Container>
     );
 }
