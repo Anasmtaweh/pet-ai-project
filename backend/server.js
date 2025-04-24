@@ -89,8 +89,8 @@ cron.schedule('*/15 * * * *', async () => { // Run every 15 minutes
     const jobStartTime = moment();
     console.log(`[${jobStartTime.tz(reminderJobTimezone).format()}] Running reminder check job...`);
 
-    const reminderWindowStartUTC = moment.utc().add(59, 'minutes');
-    const reminderWindowEndUTC = moment.utc().add(74, 'minutes');
+    const reminderWindowStartUTC = moment.utc().add(15, 'minutes');
+    const reminderWindowEndUTC = moment.utc().add(30, 'minutes');
     console.log(`Reminder Window (UTC): [${reminderWindowStartUTC.toISOString()}, ${reminderWindowEndUTC.toISOString()})`);
 
     try {
