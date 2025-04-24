@@ -1,7 +1,7 @@
 // c:\Users\Anas\M5\pet-ai-project\backend\utils\mailer.js
 const nodemailer = require('nodemailer');
 const config = require('../config/config'); // Reads from config.js which reads env vars
-const moment = require('moment'); // For formatting dates in reminders
+const moment = require('moment-timezone'); // <-- Use moment-timezone
 
 // Validate essential email configuration during startup
 if (!config.EMAIL_USER || !config.EMAIL_PASS) {
@@ -97,17 +97,25 @@ const sendPasswordResetEmail = async (toEmail, resetToken) => {
  * Sends a schedule reminder email.
  * @param {string} toEmail - Recipient email address.
  * @param {string} eventTitle - The title of the scheduled event.
- * @param {Date} eventStartTime - The start time of the event occurrence.
+ * @param {Date} eventStartTime - The start time of the event occurrence (as UTC Date object).
  */
 const sendReminderEmail = async (toEmail, eventTitle, eventStartTime) => {
+    // --- MODIFIED: Format time using the correct timezone ---
+    const reminderTimezone = "Asia/Beirut"; // Define the target timezone
+    // Convert the UTC Date object to the target timezone before formatting
+    const formattedStartTime = moment(eventStartTime).tz(reminderTimezone).format('h:mm a on dddd, MMMM Do YYYY');
+    // --- END MODIFICATION ---
+
     const mailOptions = {
         to: toEmail,
         subject: `Reminder: ${eventTitle}`,
+        // --- MODIFIED: Use the correctly formatted time ---
         html: `<p>This is a reminder for your scheduled event:</p>
                <p><b>${eventTitle}</b></p>
-               <p>Starting around: ${moment(eventStartTime).format('h:mm a on dddd, MMMM Do YYYY')}</p>
+               <p>Starting around: ${formattedStartTime}</p>
                <p>Have a great day!</p>`,
-        text: `Reminder for your scheduled event: ${eventTitle}\nStarting around: ${moment(eventStartTime).format('h:mm a on dddd, MMMM Do YYYY')}\n\nHave a great day!`
+        text: `Reminder for your scheduled event: ${eventTitle}\nStarting around: ${formattedStartTime}\n\nHave a great day!`
+        // --- END MODIFICATION ---
     };
 
     await sendEmail(mailOptions); // Use the generic sendEmail function
@@ -120,4 +128,3 @@ module.exports = {
     sendReminderEmail,
     // You could also export sendEmail if needed for other types of emails
 };
-
