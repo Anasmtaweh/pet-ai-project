@@ -1,10 +1,11 @@
+// c:\Users\Anas\Desktop\backend\models\User.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema({
     email: {
         type: String,
-        required: true,
+        required: [true, 'Email is required'], // Added custom message
         unique: true,
         trim: true,
         lowercase: true,
@@ -12,24 +13,32 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true,
-        minlength: [8, 'Password must be at least 8 characters long'],
+        required: [true, 'Password is required'], // Added custom message
+        // minlength is implicitly handled by the regex, but can be kept for clarity if desired
+        // minlength: [8, 'Password must be at least 8 characters long'],
         validate: {
             validator: function (v) {
-                // Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (#, +, - included)
+                // --- ADD THIS LINE ---
+                // Only validate complexity if the password is new or modified
+                if (!this.isModified('password')) return true;
+                // --- END ADDITION ---
+
+                // Keep your existing regex check
+                // Password must be at least 8 characters long, include uppercase, lowercase, number, and special character (#, +, - included)
                 return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#+\-.])[A-Za-z\d@$!%*?&#+\-.]{8,}$/.test(v);
             },
-            message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+            // Updated message to be slightly more specific
+            message: props => `Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#+-. etc).`
         },
     },
     username: {
         type: String,
-        required: true,
+        required: [true, 'Username is required'], // Added custom message
         trim: true,
     },
     age: {
         type: Number,
-        required: true,
+        required: [true, 'Age is required'], // Added custom message
         min: [13, 'Age must be at least 13'],
         max: [120, 'Age must be less than 120'],
     },
@@ -42,20 +51,29 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    }
+    // Use Mongoose timestamps option instead of manual createdAt
+    // createdAt: {
+    //     type: Date,
+    //     default: Date.now,
+    // }
+}, {
+    timestamps: true // Automatically adds createdAt and updatedAt
 });
 
 // Hash the password before saving the user
 userSchema.pre('save', async function (next) {
-    if (this.isModified('password')) {
-        this.password = await bcrypt.hash(this.password, 10);
+    // Only hash the password if it has been modified (or is new)
+    if (!this.isModified('password')) return next(); // <-- Important: Use return next()
+
+    try {
+        const salt = await bcrypt.genSalt(10); // Generate salt
+        this.password = await bcrypt.hash(this.password, salt); // Hash password
+        next();
+    } catch (error) {
+        next(error); // Pass error to Mongoose
     }
-    next();
 });
 
-const User = mongoose.model('User', userSchema, 'users');
+const User = mongoose.model('User', userSchema, 'users'); // Explicitly set collection name if needed
 
 module.exports = User;

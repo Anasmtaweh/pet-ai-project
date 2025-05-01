@@ -1,22 +1,23 @@
-// c:\Users\Anas\M5\pet-ai-project\backend\utils\scheduleUtils.js
+// c:\Users\Anas\Desktop\backend\utils\scheduleUtils.js
 const moment = require('moment-timezone'); // Ensure 'moment-timezone' is installed
 
 /**
  * Generates specific event occurrences based on a schedule rule within a given time window.
  * All date comparisons and calculations are performed in UTC.
  *
- * @param {object} rule - The schedule rule object from MongoDB. Should include start, end, repeat, repeatType, repeatDays, exceptionDates, owner, _id, title.
+ * @param {object} rule - The schedule rule object. Should include start, end, repeat, repeatType, repeatDays, exceptionDates, ownerId, _id, title.
  * @param {Date} windowStart - The start of the time window (as JS Date object, representing UTC).
  * @param {Date} windowEnd - The end of the time window (as JS Date object, representing UTC).
  * @returns {Array<object>} An array of occurrence objects { ruleId, ownerId, title, start (Date), end (Date) }.
  */
 const generateOccurrencesInRange = (rule, windowStart, windowEnd) => {
     const occurrences = [];
-    // Basic validation of the rule object
-    if (!rule || !rule.start || !rule.end || !rule._id || !rule.owner) {
-        // console.warn("BE: Skipping occurrence generation for invalid/incomplete rule:", rule?._id);
+    // --- MODIFIED VALIDATION: Check for ownerId ---
+    if (!rule || !rule.start || !rule.end || !rule._id || !rule.ownerId) {
+        console.warn("BE: Skipping occurrence generation for invalid/incomplete rule (missing required fields like start, end, _id, ownerId):", rule?._id);
         return occurrences; // Return empty array if essential rule data is missing
     }
+    // --- END MODIFICATION ---
 
     try {
         // --- Ensure all moments are treated as UTC ---
@@ -32,23 +33,25 @@ const generateOccurrencesInRange = (rule, windowStart, windowEnd) => {
 
         // Validate dates after converting to UTC moments
         if (!ruleStartDate.isValid() || !ruleEndDate.isValid() || ruleEndDate.isBefore(ruleStartDate)) {
-            // console.warn(`BE: Skipping rule ${rule._id} due to invalid UTC date range.`);
+            console.warn(`BE: Skipping rule ${rule._id} due to invalid UTC date range.`);
             return occurrences;
         }
         if (!ruleStartTime.isValid() || !ruleEndTime.isValid()) {
-            // console.warn(`BE: Skipping rule ${rule._id} due to invalid UTC start/end time.`);
+            console.warn(`BE: Skipping rule ${rule._id} due to invalid UTC start/end time.`);
             return occurrences;
         }
 
         // Calculate daily duration based on UTC times, handling overnight
-        const tempStart = moment.utc().set({ hour: ruleStartTime.hour(), minute: ruleStartTime.minute(), second: ruleStartTime.second(), millisecond: 0 });
-        const tempEnd = moment.utc().set({ hour: ruleEndTime.hour(), minute: ruleEndTime.minute(), second: ruleEndTime.second(), millisecond: 0 });
+        // Use temporary moments based on a fixed date to isolate time calculation
+        const tempStart = moment.utc('2000-01-01').set({ hour: ruleStartTime.hour(), minute: ruleStartTime.minute(), second: ruleStartTime.second(), millisecond: 0 });
+        const tempEnd = moment.utc('2000-01-01').set({ hour: ruleEndTime.hour(), minute: ruleEndTime.minute(), second: ruleEndTime.second(), millisecond: 0 });
         if (tempEnd.isSameOrBefore(tempStart)) {
             tempEnd.add(1, 'day'); // Event duration crosses midnight UTC
         }
         const dailyDuration = moment.duration(tempEnd.diff(tempStart));
-        if (dailyDuration.asMilliseconds() <= 0 && !(ruleStartTime.isSame(ruleEndTime))) {
-             // console.warn(`BE: Skipping rule ${rule._id} due to zero or negative duration.`);
+        // Allow zero duration if start and end times are identical (e.g., reminders)
+        if (dailyDuration.asMilliseconds() < 0) {
+             console.warn(`BE: Skipping rule ${rule._id} due to negative duration.`);
              return occurrences;
         }
 
@@ -58,13 +61,14 @@ const generateOccurrencesInRange = (rule, windowStart, windowEnd) => {
         const windowEndMoment = moment.utc(windowEnd);
 
         // Adjust loop start date based on window (all UTC)
-        let currentDay = ruleStartDate.clone();
-        if (currentDay.isBefore(windowStartMoment.startOf('day'))) {
-            currentDay = windowStartMoment.clone().startOf('day');
-        }
+        // Start checking from the rule's start date or the window's start date, whichever is later.
+        let currentDay = moment.max(ruleStartDate, windowStartMoment.clone().startOf('day'));
+
 
         // Adjust loop end date based on window and rule end (all UTC)
-        const loopEndDate = moment.min(windowEndMoment, ruleEndDate);
+        // Loop should end at the rule's end date or the window's end date, whichever is earlier.
+        const loopEndDate = moment.min(windowEndMoment.clone().subtract(1, 'millisecond'), ruleEndDate); // Use subtract to make windowEnd exclusive
+
 
         // Loop through each day within the relevant range
         while (currentDay.isSameOrBefore(loopEndDate)) {
@@ -77,49 +81,48 @@ const generateOccurrencesInRange = (rule, windowStart, windowEnd) => {
                 } else if (rule.repeatType === 'weekly' && Array.isArray(rule.repeatDays) && rule.repeatDays.includes(currentDay.format('dddd'))) {
                     occursOnThisDay = true;
                 }
+                // Add other repeat types (monthly, yearly) here if needed
             } else {
+                // For non-repeating events, only check the rule's specific start date
                 if (currentDay.isSame(ruleStartDate, 'day')) {
                     occursOnThisDay = true;
                 }
             }
 
             if (occursOnThisDay) {
+                // Calculate the specific start time for this day's occurrence in UTC
                 const occurrenceStart = currentDay.clone().set({
                     hour: ruleStartTime.hour(),
                     minute: ruleStartTime.minute(),
-                    second: ruleStartTime.second()
+                    second: ruleStartTime.second(),
+                    millisecond: ruleStartTime.millisecond() // Include milliseconds
                 });
+                // Calculate the end time based on the duration
                 const occurrenceEnd = occurrenceStart.clone().add(dailyDuration);
 
-                // --- Detailed Logging (Keep commented out unless needed) ---
-                // const debugTimezone = "Asia/Beirut";
-                // console.log(
-                //     `[Debug Rule ${rule._id}] Checking Occurrence ` +
-                //     `UTC: ${occurrenceStart.toISOString()} | ` +
-                //     `${debugTimezone}: ${occurrenceStart.clone().tz(debugTimezone).format('YYYY-MM-DD HH:mm:ss Z')} ` +
-                //     `against Window UTC: [${windowStartMoment.toISOString()}, ${windowEndMoment.toISOString()})`
-                // );
-                // --- End Logging ---
-
                 // FINAL CHECK: Compare occurrenceStart (UTC) with windowStart/windowEnd (also UTC)
-                // and check against exceptions (which are UTC timestamps)
+                // Use isBetween with inclusivity '[)' -> >= windowStart and < windowEnd
+                // Also check against exceptions (which are UTC timestamps)
                 if (occurrenceStart.isBetween(windowStartMoment, windowEndMoment, undefined, '[)') &&
                     !exceptionTimestamps.has(occurrenceStart.valueOf()))
                 {
-                    // console.log(`[Debug Rule ${rule._id}]   -> MATCH FOUND within window and not excepted!`);
+                    // --- MODIFIED OCCURRENCE OBJECT: Use ownerId ---
                     occurrences.push({
-                        ruleId: rule._id,
-                        ownerId: rule.owner, // Pass the populated owner object
+                        ruleId: rule._id.toString(), // Ensure ruleId is a string if it's an ObjectId
+                        ownerId: rule.ownerId, // Use ownerId from the rule object
                         title: rule.title,
                         start: occurrenceStart.toDate(), // Store JS Date object (represents UTC)
                         end: occurrenceEnd.toDate(),     // Store JS Date object (represents UTC)
                     });
+                    // --- END MODIFICATION ---
                 }
             }
-            currentDay.add(1, 'day'); // Move to the next day (UTC)
+            // Move to the next day (UTC) for the loop
+            currentDay.add(1, 'day');
         }
     } catch (error) {
         console.error(`Error generating occurrences for rule ${rule?._id}:`, error);
+        // Depending on desired behavior, you might want to re-throw or return empty array
     }
     return occurrences;
 };

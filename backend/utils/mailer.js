@@ -24,14 +24,18 @@ if (config.EMAIL_USER && config.EMAIL_PASS) {
     });
 
     // Verify connection configuration on startup (optional but good)
-    transporter.verify(function(error, success) {
-      if (error) {
-        console.error("Nodemailer transporter verification failed:", error);
-      } else {
-        console.log("Nodemailer transporter is ready to send emails.");
-      }
-    });
+    if (process.env.NODE_ENV !== 'test') {
+        transporter.verify(function(error, success) {
+          if (error) {
+            console.error("Nodemailer transporter verification failed:", error);
+          } else {
+            console.log("Nodemailer transporter is ready to send emails.");
+          }
+        });
+    } else {
+        console.log('Skipping Nodemailer verification in test environment.'); // Optional log
 
+    }
 } else {
     transporter = null; // Set transporter to null if config is missing
 }
