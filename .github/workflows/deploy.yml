@@ -1,11 +1,12 @@
-# c:\Users\Anas\Desktop\backend\.github\workflows\deploy.yml
-name: Backend Test and Deploy # Renamed for clarity
+# .github/workflows/deploy.yml
+name: Backend Test and Deploy
 
 on:
   push:
     branches: [main]
     paths:
       - 'backend/**'
+      - '.github/workflows/deploy.yml' # Trigger on workflow changes too
   workflow_dispatch:
 
 env:
@@ -15,11 +16,15 @@ env:
   NODE_VERSION: '20.x' # Specify your Node.js version
 
 jobs:
-  # --- NEW JOB: Run Tests ---
+  # --- TEST JOB ---
   test:
     name: Run Unit Tests
     runs-on: ubuntu-latest
-
+    # --- ADD DEFAULTS ---
+    defaults:
+      run:
+        working-directory: ./backend # Set default working dir for run steps in this job
+    # --- END DEFAULTS ---
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,30 +33,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'yarn' # Enable caching for yarn dependencies
+          cache: 'yarn'
+          # --- THIS IS THE FIX ---
+          cache-dependency-path: backend/yarn.lock # Tell cache where lock file is
 
       - name: Install Dependencies
-        run: yarn install --frozen-lockfile # Use frozen lockfile for CI consistency
-        working-directory: ./backend # Run in the backend directory
+        # working-directory is inherited from defaults
+        run: yarn install --frozen-lockfile
 
       - name: Run Tests
+        # working-directory is inherited from defaults
         run: yarn test
-        working-directory: ./backend # Run in the backend directory
         env:
-          CI: true # Often used by test runners
-          NODE_ENV: test # Explicitly set test environment if your tests rely on it
+          CI: true
+          NODE_ENV: test # Set test environment
 
-  # --- DEPLOY JOB: Depends on Test Job ---
+  # --- DEPLOY JOB ---
   build-deploy:
     name: Build and Deploy Backend
     runs-on: ubuntu-latest
-    needs: test # <<< IMPORTANT: This job runs only if the 'test' job succeeds
-    # Optional but recommended: Only run deploy on actual push/merge to main, not just any trigger
-    if: github.ref == 'refs/heads/main'
+    needs: test # Runs only if 'test' job succeeds
+    if: github.ref == 'refs/heads/main' # Deploy only on push/merge to main
 
     permissions:
       contents: read
-      id-token: write # Keep as is, aws-actions might use it
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -67,24 +73,18 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         run: |
-          echo "Attempting ECR login..."
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $ECR_REGISTRY
-          echo "ECR login successful."
 
       - name: Build and push Docker image
         id: build-image
         run: |
           IMAGE_TAG=latest
-          echo "Building Docker image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          # Ensure Dockerfile is inside ./backend
+          # Build using the backend directory as context
           docker build --no-cache -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
-          echo "Pushing Docker image..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "Image pushed successfully."
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      # --- Deploy to EC2 Step (No changes needed here) ---
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
@@ -92,7 +92,7 @@ jobs:
           port: 2222
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: ECR_REGISTRY, ECR_REPOSITORY # Pass only necessary envs for the script
+          envs: ECR_REGISTRY, ECR_REPOSITORY, AWS_REGION # Pass AWS_REGION too
           script: |
             set -e # Exit script immediately if any command fails
 
@@ -104,7 +104,8 @@ jobs:
               echo "AWS CLI installed."
             fi
             echo "Logging into Amazon ECR via script..."
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+            # Use AWS_REGION variable passed via envs
+            aws ecr get-login-password --region $AWS_REGION | \
               docker login --username AWS --password-stdin $ECR_REGISTRY
             echo "ECR login successful via script."
 
@@ -123,11 +124,12 @@ jobs:
             # --- End ECR/Cleanup ---
 
             # --- START: Export Secrets to Shell Variables ---
+            # These secrets are provided by GitHub Actions secrets context
             echo "Exporting secrets to shell environment variables..."
             export NODE_ENV="production"
             export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-            export AWS_REGION="${{ env.AWS_REGION }}"
+            export AWS_REGION="${{ env.AWS_REGION }}" # Use env var
             export S3_BUCKET_NAME="${{ secrets.S3_BUCKET_NAME }}"
             export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
             export DB_URL="${{ secrets.DB_URL }}"
@@ -138,7 +140,7 @@ jobs:
             # --- END: Export Secrets ---
 
             echo "Running new container: $CONTAINER_NAME"
-            # --- Modified docker run command to use SHELL variables ---
+            # --- Run container using exported SHELL variables ---
             docker run -d \
               --name $CONTAINER_NAME \
               --health-cmd="curl -sSf http://localhost:3001/health || exit 1" \
@@ -159,11 +161,11 @@ jobs:
               -e EMAIL_PASS="$EMAIL_PASS" \
               -e JWT_SECRET="$JWT_SECRET" \
               $IMAGE_NAME # The image to run
-            # --- End Modified docker run ---
+            # --- End Run container ---
 
             echo "✅ Deployment complete: $CONTAINER_NAME container started."
 
             # Optional: Clean up dangling Docker images
-            # echo "Pruning dangling Docker images..."
-            # docker image prune -f
-            # echo "Image pruning complete."
+            echo "Pruning dangling Docker images..."
+            docker image prune -f
+            echo "Image pruning complete."
