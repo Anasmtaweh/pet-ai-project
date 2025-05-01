@@ -34,23 +34,22 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: backend/yarn.lock # Tell cache where lock file is
 
-      # --- ADD THIS STEP ---
+      # Enable Corepack (Keep this, it might still be needed for setup-node cache or other tools)
       - name: Enable Corepack
         run: corepack enable
-      # --- END ADD STEP ---
 
-      - name: Install Dependencies
-        # working-directory is inherited from defaults
-        run: yarn install --frozen-lockfile
+      - name: Install Dependencies using Corepack
+        # Use 'corepack yarn' to ensure the version from package.json is used
+        run: corepack yarn install --frozen-lockfile
 
-      - name: Run Tests
-        # working-directory is inherited from defaults
-        run: yarn test
+      - name: Run Tests using Corepack
+        # Use 'corepack yarn' to ensure the version from package.json is used
+        run: corepack yarn test
         env:
           CI: true
           NODE_ENV: test # Set test environment
 
-  # --- DEPLOY JOB ---
+  # --- DEPLOY JOB (Remains the same) ---
   build-deploy:
     name: Build and Deploy Backend
     runs-on: ubuntu-latest
