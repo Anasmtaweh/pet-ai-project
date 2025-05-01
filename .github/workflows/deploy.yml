@@ -20,11 +20,9 @@ jobs:
   test:
     name: Run Unit Tests
     runs-on: ubuntu-latest
-    # --- ADD DEFAULTS ---
     defaults:
       run:
         working-directory: ./backend # Set default working dir for run steps in this job
-    # --- END DEFAULTS ---
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,8 +32,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
-          # --- THIS IS THE FIX ---
           cache-dependency-path: backend/yarn.lock # Tell cache where lock file is
+
+      # --- ADD THIS STEP ---
+      - name: Enable Corepack
+        run: corepack enable
+      # --- END ADD STEP ---
 
       - name: Install Dependencies
         # working-directory is inherited from defaults
