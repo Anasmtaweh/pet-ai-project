@@ -1,4 +1,4 @@
-// c:\Users\Anas\Desktop\backend\routes\pets.js
+// c:\Users\Anas\M5\pet-ai-project\backend\routes\pets.js
 
 const express = require('express');
 const router = express.Router();
@@ -11,7 +11,7 @@ const Pet = require('../models/Pet');
 const RecentActivity = require('../models/RecentActivity');
 const { uploadFileToS3, deleteFileFromS3 } = require('../utils/s3Utils');
 
-// --- Multer Configuration ---
+// --- Multer Configuration (ensure this is at the top of the file or accessible) ---
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
@@ -19,7 +19,6 @@ const fileFilter = (req, file, cb) => {
     if (allowedMimeTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
-        // Pass a specific error message that we can check later
         cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WEBP images are allowed.'), false);
     }
 };
@@ -41,39 +40,26 @@ const logActivity = async (type, details, userId, petId = null) => {
     }
 };
 
-// --- Refactored POST /pets/add ---
-// We'll wrap the Multer middleware execution to catch its errors directly.
+// --- POST /pets/add (No changes from your provided version, kept for context) ---
 router.post('/add', (req, res, next) => {
-    // Manually invoke the multer middleware
     upload.single('picture')(req, res, async (err) => {
-        // --- Explicitly handle Multer and custom errors ---
         if (err) {
             if (err instanceof multer.MulterError) {
-                // Handle specific Multer errors (like file size)
                 if (err.code === 'LIMIT_FILE_SIZE') {
                     return res.status(400).json({ message: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
                 }
-                // Handle other potential Multer errors
                 return res.status(400).json({ message: `File upload error: ${err.message}` });
             } else if (err.message.startsWith('Invalid file type')) {
-                // Handle the custom error from our fileFilter
                 return res.status(400).json({ message: err.message });
             } else {
-                // Handle other unexpected errors during upload middleware
-                console.error("Unexpected error during file upload middleware:", err);
+                console.error("Unexpected error during file upload middleware (POST /add):", err);
                 return res.status(500).json({ message: 'Error processing file upload.' });
             }
         }
-        // --- End error handling ---
-
-        // If we reach here, Multer finished without errors (or no file was uploaded)
-        // Now, proceed with the rest of the original route logic
 
         const { name, ageYears, ageMonths, weight, species, gender, breed, medicalInfo, owner } = req.body;
 
-        // --- Validation ---
         if (!name || !species || !gender || !breed || !owner) {
-            console.error("Validation Failed - Missing Text Fields. Received body:", req.body);
             return res.status(400).json({ message: 'Name, species, gender, breed, and owner are required.' });
         }
         const numAgeYears = Number(ageYears);
@@ -89,14 +75,12 @@ router.post('/add', (req, res, next) => {
         if (isNaN(numWeight) || numWeight <= 0 || numWeight > 200) {
             return res.status(400).json({ message: 'Valid weight (greater than 0, max 200) is required.' });
         }
-        // Adjust species validation based on your Pet model if needed
-        if (!['Dog', 'Cat', /*'Bird', 'Fish', 'Reptile', 'Other'*/].includes(species)) { // Assuming only Dog/Cat based on model
+        if (!['Dog', 'Cat'].includes(species)) {
             return res.status(400).json({ message: 'Invalid species provided. Only Dog or Cat allowed.' });
         }
         if (!['Male', 'Female'].includes(gender)) {
             return res.status(400).json({ message: 'Gender must be either Male or Female.' });
         }
-        // --- End Validation ---
 
         try {
             const ownerExists = await User.findById(owner);
@@ -105,32 +89,27 @@ router.post('/add', (req, res, next) => {
             }
 
             let pictureUrl = null;
-            let pictureKey = null;
+            // let pictureKey = null; // Not directly used after uploadResult in this version
 
             if (req.file) {
-                console.log(`Received file: ${req.file.originalname} ${req.file.mimetype} ${req.file.size}`);
+                console.log(`Received file for add: ${req.file.originalname}`);
                 const uniqueSuffix = crypto.randomBytes(16).toString('hex');
                 const fileExtension = path.extname(req.file.originalname) || '.jpg';
                 const s3Key = `uploads/pets/pet_${owner}_${uniqueSuffix}${fileExtension}`;
-                console.log(`Generated S3 Key: ${s3Key}`);
+                console.log(`Generated S3 Key for add: ${s3Key}`);
 
-                // ...
                 try {
                     const uploadResult = await uploadFileToS3({
-                        fileBuffer: req.file.buffer,    // CORRECTED: Use 'fileBuffer'
-                        fileName: s3Key,                // CORRECTED: Use 'fileName'
+                        fileBuffer: req.file.buffer,
+                        fileName: s3Key,
                         mimetype: req.file.mimetype
                     });
                     pictureUrl = uploadResult.url;
-                    pictureKey = uploadResult.key; // This should still work as s3Utils returns { key, url }
-                    console.log(`Uploaded picture URL: ${pictureUrl}`);
-                // ...
-
+                    // pictureKey = uploadResult.key;
+                    console.log(`Uploaded picture URL for add: ${pictureUrl}`);
                 } catch (uploadError) {
                     console.error("S3 Upload Error in /pets/add route:", uploadError);
-                    const errMsg = uploadError.message || 'Failed to upload picture to storage.';
-                    // Since Multer errors are handled above, this catch is primarily for S3 errors
-                    return res.status(500).json({ message: errMsg });
+                    return res.status(500).json({ message: uploadError.message || 'Failed to upload picture to storage.' });
                 }
             } else {
                 console.log("No picture file received for pet add.");
@@ -160,14 +139,13 @@ router.post('/add', (req, res, next) => {
             if (error.name === 'ValidationError') {
                 return res.status(400).json({ message: 'Validation error', details: error.errors });
             }
-            // Avoid sending response again if already sent by Multer error handler
             if (!res.headersSent) {
                 res.status(500).json({ message: 'Server error adding pet' });
             }
         }
-    }); // End of Multer callback
-}); // End of route definition
-// --- End Refactored POST /pets/add ---
+    });
+});
+// --- End POST /pets/add ---
 
 
 // GET /pets/owner/:ownerId - Get all pets for a specific owner
@@ -240,20 +218,26 @@ router.delete('/:id', async (req, res) => {
             const deletePromises = pet.pictures.map(async (pictureUrl) => {
                 try {
                     const url = new URL(pictureUrl);
-                    const key = url.pathname.substring(1);
+                    const key = url.pathname.substring(1); // Remove leading '/'
                     if (key) {
                         console.log(`Attempting to delete S3 object: ${key}`);
                         await deleteFileFromS3(key);
                     }
                 } catch (s3Error) {
                     console.error(`Failed to delete S3 object for ${pictureUrl}:`, s3Error);
+                    // Log and continue, or decide if this should be a fatal error for the delete op
                 }
             });
             await Promise.all(deletePromises);
         }
 
         await Pet.findByIdAndDelete(petId);
-        await logActivity('pet_deleted', `Pet deleted: ${pet.name}`, pet.owner, pet._id);
+        // Log activity (ensure pet.owner is available or handle if not)
+        if (pet.owner) {
+            await logActivity('pet_deleted', `Pet deleted: ${pet.name}`, pet.owner, pet._id);
+        } else {
+            console.warn(`Pet ${pet._id} deleted, but owner information was missing for activity log.`);
+        }
         res.json({ message: 'Pet and associated pictures deleted' });
     } catch (error) {
         console.error("Error deleting pet:", error);
@@ -261,51 +245,163 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-// PUT /pets/:id - Update pet details
-router.put('/:id', async (req, res) => {
-    try {
-        const petId = req.params.id;
-        if (!mongoose.Types.ObjectId.isValid(petId)) {
-            return res.status(400).json({ message: 'Invalid pet ID format' });
-        }
-        const { pictures, owner, ...updateData } = req.body;
-
-        if (updateData.ageYears !== undefined) {
-            updateData.ageYears = Number(updateData.ageYears);
-            if (isNaN(updateData.ageYears) || updateData.ageYears < 0 || updateData.ageYears > 50) {
-                return res.status(400).json({ message: 'Invalid ageYears provided for update.' });
+// --- MODIFIED PUT /pets/:id - Update pet details (NOW WITH PICTURE UPDATE CAPABILITY) ---
+router.put('/:id', (req, res, next) => {
+    upload.single('picture')(req, res, async (err) => {
+        // --- Multer Error Handling ---
+        if (err) {
+            if (err instanceof multer.MulterError) {
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ message: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
+                }
+                return res.status(400).json({ message: `File upload error: ${err.message}` });
+            } else if (err.message.startsWith('Invalid file type')) {
+                return res.status(400).json({ message: err.message });
+            } else {
+                console.error("Unexpected error during file upload middleware (PUT /:id):", err);
+                return res.status(500).json({ message: 'Error processing file upload.' });
             }
         }
-        if (updateData.ageMonths !== undefined) {
-            updateData.ageMonths = Number(updateData.ageMonths);
-             if (isNaN(updateData.ageMonths) || updateData.ageMonths < 0 || updateData.ageMonths > 11) {
-                return res.status(400).json({ message: 'Invalid ageMonths provided for update.' });
+        // --- End Multer Error Handling ---
+
+        try {
+            const petId = req.params.id;
+            if (!mongoose.Types.ObjectId.isValid(petId)) {
+                return res.status(400).json({ message: 'Invalid pet ID format' });
+            }
+
+            const { name, ageYears, ageMonths, weight, species, gender, breed, medicalInfo } = req.body;
+            const updateData = {};
+
+            // --- Validations for text fields ---
+            // Only add to updateData if the field is actually provided in the request body
+            if (name !== undefined) {
+                if (!name.trim()) return res.status(400).json({ message: 'Pet name cannot be empty if provided.' });
+                updateData.name = name.trim();
+            }
+            if (ageYears !== undefined) {
+                const numAgeYears = Number(ageYears);
+                if (isNaN(numAgeYears) || numAgeYears < 0 || numAgeYears > 50) {
+                    return res.status(400).json({ message: 'Valid age in years (0-50) is required for update.' });
+                }
+                updateData.ageYears = numAgeYears;
+            }
+            if (ageMonths !== undefined) {
+                const numAgeMonths = Number(ageMonths);
+                if (isNaN(numAgeMonths) || numAgeMonths < 0 || numAgeMonths > 11) {
+                    return res.status(400).json({ message: 'Valid age in months (0-11) is required for update.' });
+                }
+                updateData.ageMonths = numAgeMonths;
+            }
+            if (weight !== undefined) {
+                const numWeight = Number(weight);
+                if (isNaN(numWeight) || numWeight <= 0 || numWeight > 200) {
+                    return res.status(400).json({ message: 'Valid weight (0.1-200) is required for update.' });
+                }
+                updateData.weight = numWeight;
+            }
+            if (species !== undefined) {
+                if (!['Dog', 'Cat'].includes(species)) {
+                    return res.status(400).json({ message: 'Invalid species. Only Dog or Cat allowed.' });
+                }
+                updateData.species = species;
+            }
+            if (gender !== undefined) {
+                 if (!['Male', 'Female'].includes(gender)) {
+                    return res.status(400).json({ message: 'Gender must be Male or Female.' });
+                }
+                updateData.gender = gender;
+            }
+            if (breed !== undefined) {
+                if (!breed.trim()) return res.status(400).json({ message: 'Breed cannot be empty if provided.' });
+                updateData.breed = breed.trim();
+            }
+            if (medicalInfo !== undefined) { // medicalInfo can be an empty string
+                updateData.medicalInfo = medicalInfo.trim();
+            }
+            // --- End Validations ---
+
+            const petToUpdate = await Pet.findById(petId);
+            if (!petToUpdate) {
+                return res.status(404).json({ message: 'Pet not found' });
+            }
+
+            // --- Picture Handling ---
+            if (req.file) {
+                console.log(`New picture received for update on pet ${petId}: ${req.file.originalname}`);
+
+                // 1. Delete old picture from S3 if it exists
+                if (petToUpdate.pictures && petToUpdate.pictures.length > 0) {
+                    const oldPictureUrl = petToUpdate.pictures[0]; // Assuming only one picture
+                    try {
+                        const url = new URL(oldPictureUrl);
+                        const oldS3Key = url.pathname.substring(1); // Remove leading '/'
+                        if (oldS3Key) {
+                            console.log(`Attempting to delete old S3 object: ${oldS3Key}`);
+                            await deleteFileFromS3(oldS3Key);
+                        }
+                    } catch (s3DeleteError) {
+                        console.error(`Failed to delete old S3 object ${oldPictureUrl}:`, s3DeleteError);
+                        // Log and continue, or return error based on strictness
+                        // For now, we'll log and continue to allow new picture upload
+                    }
+                }
+
+                // 2. Upload new picture to S3
+                // Ensure petToUpdate.owner is valid before using it in the key
+                const ownerIdForS3Key = petToUpdate.owner ? petToUpdate.owner.toString() : 'unknown_owner';
+                const uniqueSuffix = crypto.randomBytes(16).toString('hex');
+                const fileExtension = path.extname(req.file.originalname) || '.jpg';
+                const s3Key = `uploads/pets/pet_${ownerIdForS3Key}_${uniqueSuffix}${fileExtension}`;
+                console.log(`Generated new S3 Key for update: ${s3Key}`);
+
+                try {
+                    const uploadResult = await uploadFileToS3({
+                        fileBuffer: req.file.buffer,
+                        fileName: s3Key,
+                        mimetype: req.file.mimetype
+                    });
+                    updateData.pictures = [uploadResult.url]; // Update pictures array with new URL
+                    console.log(`Uploaded new picture URL for update: ${uploadResult.url}`);
+                } catch (uploadError) {
+                    console.error("S3 Upload Error in /pets/:id (PUT):", uploadError);
+                    return res.status(500).json({ message: uploadError.message || 'Failed to upload new picture.' });
+                }
+            }
+            // --- End Picture Handling ---
+
+            // Only update if there's something to update (text fields or picture)
+            if (Object.keys(updateData).length === 0 && !req.file) {
+                return res.status(200).json({ message: 'No changes provided.', pet: petToUpdate });
+            }
+
+            const updatedPet = await Pet.findByIdAndUpdate(
+                petId,
+                { $set: updateData },
+                { new: true, runValidators: true } // runValidators is important for schema validation on update
+            ).populate('owner', 'username'); // Populate owner info in the response
+
+            if (!updatedPet) {
+                // This case should ideally be caught by petToUpdate check, but as a safeguard:
+                return res.status(404).json({ message: 'Pet not found after update attempt.' });
+            }
+            // Optional: Log activity for pet update
+            // await logActivity('pet_updated', `Pet details updated: ${updatedPet.name}`, updatedPet.owner, updatedPet._id);
+            res.json(updatedPet);
+
+        } catch (error) {
+            console.error("Error in /pets/:id PUT (main logic):", error);
+            if (error.name === 'ValidationError') {
+                return res.status(400).json({ message: 'Validation error during update.', details: error.errors });
+            }
+            // Avoid sending response again if already sent by Multer error handler
+            if (!res.headersSent) {
+                res.status(500).json({ message: 'Server error updating pet' });
             }
         }
-         if (updateData.weight !== undefined) {
-            updateData.weight = Number(updateData.weight);
-             if (isNaN(updateData.weight) || updateData.weight <= 0 || updateData.weight > 200) {
-                return res.status(400).json({ message: 'Invalid weight provided for update.' });
-            }
-        }
-
-        const updatedPet = await Pet.findByIdAndUpdate(
-            petId,
-            { $set: updateData },
-            { new: true, runValidators: true }
-        ).populate('owner', 'username');
-
-        if (!updatedPet) {
-            return res.status(404).json({ message: 'Pet not found' });
-        }
-        res.json(updatedPet);
-    } catch (error) {
-        console.error("Error in /pets/:id PUT:", error);
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({ message: 'Validation error', details: error.errors });
-        }
-        res.status(500).json({ message: 'Server error updating pet' });
-    }
+    });
 });
+// --- End PUT /pets/:id ---
 
 module.exports = router;
+
