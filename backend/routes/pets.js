@@ -114,15 +114,18 @@ router.post('/add', (req, res, next) => {
                 const s3Key = `uploads/pets/pet_${owner}_${uniqueSuffix}${fileExtension}`;
                 console.log(`Generated S3 Key: ${s3Key}`);
 
+                // ...
                 try {
                     const uploadResult = await uploadFileToS3({
-                        buffer: req.file.buffer,
-                        mimetype: req.file.mimetype,
-                        key: s3Key // Pass the generated key
+                        fileBuffer: req.file.buffer,    // CORRECTED: Use 'fileBuffer'
+                        fileName: s3Key,                // CORRECTED: Use 'fileName'
+                        mimetype: req.file.mimetype
                     });
                     pictureUrl = uploadResult.url;
-                    pictureKey = uploadResult.key;
+                    pictureKey = uploadResult.key; // This should still work as s3Utils returns { key, url }
                     console.log(`Uploaded picture URL: ${pictureUrl}`);
+                // ...
+
                 } catch (uploadError) {
                     console.error("S3 Upload Error in /pets/add route:", uploadError);
                     const errMsg = uploadError.message || 'Failed to upload picture to storage.';
