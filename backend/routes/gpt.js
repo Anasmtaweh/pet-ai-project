@@ -31,7 +31,7 @@ router.post('/ask', async (req, res) => {
             return res.status(400).json({ error: 'Please provide a question.' });
         }
 
-        const systemPrompt = `You are a helpful assistant specializing in pet care and products available in Lebanon. If the question is about pet products, suggest products from the following list, specifying where they can be purchased in Lebanon. If no pet products are mentioned, answer the question directly. If you don't know the answer, say "I don't know".
+        const systemPrompt = `You are a helpful assistant specializing in pet care and products available in Lebanon. And if the question is not related to pets or pet products answer"I can only assist you in pet related questions" If the question is about pet products, suggest products from the following list, specifying where they can be purchased in Lebanon. If no pet products are mentioned, answer the question directly. If you don't know the answer, say "I don't know".
 
 Lebanon Pet Products: ${JSON.stringify(LEBANON_PET_PRODUCTS)}`;
 

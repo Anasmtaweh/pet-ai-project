@@ -1,21 +1,37 @@
 /* Footer.module.css */
 .footer {
-    background-color: var(--primary-color);
-    color: var(--background-color);
+    background-color: var(--primary-color); /* e.g., Cadet Blue */
+    color: var(--background-color);         /* e.g., White - this is the default text color for p tags etc. */
     padding: var(--padding-large) 0;
     margin-top: var(--margin-large);
+    font-size: 0.9rem; /* Slightly smaller base font for footer */
 }
 
-.footer h5 {
-    color: var(--background-color);
-    margin-bottom: var(--margin-small);
+.footerH5 { /* Targets elements with className={styles.footerH5} */
+    color: var(--background-color); /* Explicitly set, though inherited */
+    margin-bottom: var(--margin-medium); /* Increased margin for better spacing under titles */
+    font-size: 1.1rem; /* Slightly larger than base footer font */
+    font-weight: bold;
 }
 
-.footer a {
-    color: var(--background-color);
+.footerA { /* Targets elements with className={styles.footerA} */
+    color: var(--background-color); /* Explicitly set, ensures link color matches footer text */
     text-decoration: none;
+    transition: color 0.2s ease-in-out, text-decoration 0.2s ease-in-out; /* Smooth transition for hover */
+    display: inline-flex; /* Helps align icons and text *within* the link */
+    align-items: center;  /* Vertically aligns icon with text *within* the link */
+    vertical-align: middle; /* ADD THIS LINE: Aligns the <a> tag itself with surrounding text */
 }
 
-.footer a:hover {
+.footerA:hover {
+    color: #e0e0e0; /* Slightly off-white or a lighter shade of background-color for hover */
     text-decoration: underline;
 }
+
+/* Optional: Specific styling for the "Developed by" paragraph if needed,
+   but the default p styling from .footer should be fine.
+.developerCredit {
+    font-size: 0.85rem;
+}
+*/
+
