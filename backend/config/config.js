@@ -3,8 +3,7 @@ require('dotenv').config(); // Load .env file for local development (ensure .env
 
 // Helper function to read and trim env var, using fallback if necessary
 const getEnv = (key, defaultValue = undefined) => {
-    // If process.env[key] exists (even if it's an empty string after trim), use it.
-    // Otherwise, use defaultValue.
+    
     const value = process.env[key];
     if (value !== undefined) {
         const trimmedValue = value.trim();
@@ -39,7 +38,7 @@ const AWS_SECRET_ACCESS_KEY = getEnv('AWS_SECRET_ACCESS_KEY');
 const AWS_REGION = getEnv('AWS_REGION');
 const S3_BUCKET_NAME = getEnv('S3_BUCKET_NAME');
 
-// Optional: Add warnings if optional but important configs are missing
+
 if (!EMAIL_USER || !EMAIL_PASS) {
     console.warn("WARNING: EMAIL_USER or EMAIL_PASS is not set. Email functionality will be disabled.");
 }
@@ -56,7 +55,7 @@ module.exports = {
 
     EMAIL_USER: EMAIL_USER,
     EMAIL_PASS: EMAIL_PASS,
-    openaiApiKey: OPENAI_API_KEY, // Consider making the key consistent: OPENAI_API_KEY or openaiApiKey
+    openaiApiKey: OPENAI_API_KEY, 
 
     aws: {
         accessKeyId: AWS_ACCESS_KEY_ID,

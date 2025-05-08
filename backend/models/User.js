@@ -18,12 +18,12 @@ const userSchema = new mongoose.Schema({
         // minlength: [8, 'Password must be at least 8 characters long'],
         validate: {
             validator: function (v) {
-                // --- ADD THIS LINE ---
+                
                 // Only validate complexity if the password is new or modified
                 if (!this.isModified('password')) return true;
-                // --- END ADDITION ---
+                
 
-                // Keep your existing regex check
+                
                 // Password must be at least 8 characters long, include uppercase, lowercase, number, and special character (#, +, - included)
                 return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#+\-.])[A-Za-z\d@$!%*?&#+\-.]{8,}$/.test(v);
             },
@@ -51,11 +51,7 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
-    // Use Mongoose timestamps option instead of manual createdAt
-    // createdAt: {
-    //     type: Date,
-    //     default: Date.now,
-    // }
+    
 }, {
     timestamps: true // Automatically adds createdAt and updatedAt
 });

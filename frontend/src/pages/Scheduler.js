@@ -1,5 +1,5 @@
 // src/pages/Scheduler.js
-// --- VERSION WITH DELETE OCCURRENCE/SERIES CHOICE & INPUT FIX ---
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import moment from 'moment'; // Ensure moment is installed
@@ -123,9 +123,9 @@ function Scheduler() {
     const [calendarDate, setCalendarDate] = useState(initialDate);
     // --- END NEW ---
 
-    // --- MODIFIED: Initial view range based on initialDate and default view ---
+    // --- : Initial view range based on initialDate and default view ---
     const [currentViewRange, setCurrentViewRange] = useState(calculateDataWindow(initialDate));
-    // --- END MODIFIED ---
+    // --- END  ---
     const [showAddEditModal, setShowAddEditModal] = useState(false); // Modal for Add/Edit
     const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false); // Modal for Delete Choice
     const [selectedOccurrence, setSelectedOccurrence] = useState(null); // Specific calendar event clicked
@@ -356,11 +356,7 @@ function Scheduler() {
             if (endTime.isSameOrBefore(startTime)) {
                  // Allow overnight if end date is explicitly after start date (though UI might not support this well)
                  if (!newEvent.end.isAfter(newEvent.start, 'day')) {
-                     // If times imply overnight but dates don't, it's an error unless duration is exactly 24h?
-                     // Simpler: just ensure end time is after start time for daily duration calculation
-                     // Let's assume for now end time must be after start time on the same day for simplicity
-                     // Or handle overnight duration calculation correctly in generateOccurrences
-                     // For validation: Check if duration is positive
+
                      const tempS = moment().set({ hour: newEvent.start.hour(), minute: newEvent.start.minute() });
                      const tempE = moment().set({ hour: newEvent.end.hour(), minute: newEvent.end.minute() });
                      if (tempE.isSameOrBefore(tempS)) {
@@ -532,26 +528,19 @@ function Scheduler() {
         console.log("Navigate:", newDate, view);
         setCalendarDate(newDate); // Update the calendar's focus date
 
-        // Update the data fetching range based on the new date and the *current* view
-        // Note: 'view' passed here might be the old view if only date changed
-        // It's safer to derive range from newDate and the actual current view setting if available
-        // Or just use a standard range like month for simplicity when navigating
+
         const newStart = moment(newDate).startOf('month').toDate(); // Fetch +/- 1 month around navigated date
         const newEnd = moment(newDate).endOf('month').toDate();
-        // Or use the view:
-        // const newStart = moment(newDate).startOf(view).toDate();
-        // const newEnd = moment(newDate).endOf(view).toDate();
+
         setCurrentViewRange(calculateDataWindow(newDate));
     };
 
     const handleView = (view) => {
         console.log("View Change:", view);
-        // When view changes, the calendarDate usually stays the same.
-        // We just need to ensure the data range remains the wide one.
-        // Recalculating based on current calendarDate ensures consistency.
+ 
+    
         setCurrentViewRange(calculateDataWindow(calendarDate)); // Use the wide window calculation
-        // Note: react-big-calendar might internally adjust its display range
-        // based on the view, but our data source (displayEvents) remains wide.
+    
     };
 
     // --- End Handle Calendar View/Range Change ---

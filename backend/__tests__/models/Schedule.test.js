@@ -2,7 +2,7 @@
 
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const Schedule = require('../../models/Schedule'); // Adjust path if necessary
+const Schedule = require('../../models/Schedule'); 
 
 let mongoServer;
 

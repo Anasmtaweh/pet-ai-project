@@ -5,7 +5,7 @@
 jest.mock('../../utils/s3Utils', () => ({
     uploadToS3: jest.fn().mockResolvedValue({ Location: 'mock-s3-location' }),
     deleteFromS3: jest.fn().mockResolvedValue({}),
-    // Add mocks for any other functions exported/used by your app from s3Utils if needed
+    
 }));
 // --- End Mocking ---
 

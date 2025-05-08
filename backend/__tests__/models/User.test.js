@@ -3,7 +3,7 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const bcrypt = require('bcrypt'); // Needed to check hashing
-const User = require('../../models/User'); // Adjust path if necessary
+const User = require('../../models/User'); 
 
 let mongoServer;
 

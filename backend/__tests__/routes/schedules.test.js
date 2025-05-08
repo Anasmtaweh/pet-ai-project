@@ -109,7 +109,7 @@ describe('Schedule Routes', () => {
             expect(dbSchedule.repeatDays).toEqual(['Monday', 'Friday']);
         });
 
-        // --- FIX 1: Expect 400 for validation error ---
+
         it('should return 400 if required fields are missing', async () => { // Updated test name
             const invalidData = { ...validScheduleData };
             delete invalidData.title; // Remove title
@@ -120,14 +120,13 @@ describe('Schedule Routes', () => {
 
             // Expect 400 because the manual validation check catches it
             expect(response.statusCode).toBe(400);
-            // --- UPDATE THIS LINE ---
-            expect(response.body.message).toBe('Missing required fields (title, start, end, type, owner)');
-            // --- REMOVE OR COMMENT OUT THIS LINE (details not sent in this case) ---
-            // expect(response.body.details).toHaveProperty('title');
-        });
-        // --- End FIX 1 ---
 
-        // --- FIX 2: Expect 400 for validation error ---
+            expect(response.body.message).toBe('Missing required fields (title, start, end, type, owner)');
+
+        });
+
+
+        
          it('should return 400 for invalid enum type', async () => { // Updated test name
             const invalidData = { ...validScheduleData, type: 'invalid-type' };
             const response = await request(app)
@@ -139,9 +138,7 @@ describe('Schedule Routes', () => {
             expect(response.body.message).toBe('Validation error');
             expect(response.body.details).toHaveProperty('type'); // Check type caused the error
         });
-        // --- End FIX 2 ---
-
-        // Add test for non-existent owner? Route doesn't check this currently.
+        
     });
 
     // --- GET /schedules/owner/:ownerId ---
@@ -219,7 +216,7 @@ describe('Schedule Routes', () => {
             expect(response.body.message).toBe('Schedule not found');
         });
 
-        // --- FIX 3: Expect 400 for validation error ---
+        
         it('should return 400 for invalid update data (e.g., invalid type)', async () => { // Updated test name
             const updates = { type: 'invalid-enum' };
             const response = await request(app)
@@ -231,7 +228,7 @@ describe('Schedule Routes', () => {
             expect(response.body.message).toBe('Validation error');
             expect(response.body.details).toHaveProperty('type'); // Check type caused the error
         });
-        // --- End FIX 3 ---
+        
 
         // Route doesn't validate ID format
         // it('should return 500 for invalid schedule ID format', async () => { ... });

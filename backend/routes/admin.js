@@ -88,13 +88,13 @@ router.delete('/users/:id', adminMiddleware, async (req, res) => {
         const adminUserId = req.user.id; // ID of the admin performing the action
         const userIdToDelete = req.params.id;
 
-        // --- FIX: Find the user first ---
+        // ---  Find the user first ---
         const user = await User.findById(userIdToDelete);
         if (!user) {
             // If user not found, return 404 immediately
             return res.status(404).json({ message: 'User not found' });
         }
-        // --- END FIX ---
+        // --- END  ---
 
         const userEmail = user.email; // Now safe to access
 
@@ -129,11 +129,7 @@ router.put('/users/:id', adminMiddleware, async (req, res) => {
     const userId = req.params.id;
     const { isActive: requestedStatus } = req.body; // Get the requested status from body
 
-    // Keep console logs for debugging if needed
-    // console.log(`--- Updating User Status (Using .save()) ---`);
-    // console.log(`User ID: ${userId}`);
-    // console.log(`Received Request Body:`, req.body);
-    // console.log(`Requested isActive status: ${requestedStatus} (Type: ${typeof requestedStatus})`);
+    
 
     // Validate the received value
     if (typeof requestedStatus !== 'boolean') {
@@ -247,18 +243,7 @@ router.delete('/pets/:id', adminMiddleware, async (req, res) => {
         // Log pet deletion
         await logActivity('pet_deleted', `Pet deleted: ${pet.name}`, pet.owner, adminUserId, pet._id);
 
-        // Note: S3 picture deletion logic should ideally be here if pictures are stored
-        // Example (requires s3Utils and proper key extraction):
-        // if (pet.pictures && pet.pictures.length > 0) {
-        //     const { deleteFileFromS3 } = require('../utils/s3Utils'); // Import here or at top
-        //     for (const pictureUrl of pet.pictures) {
-        //         try {
-        //             const url = new URL(pictureUrl);
-        //             const key = url.pathname.substring(1);
-        //             if (key) await deleteFileFromS3(key);
-        //         } catch (e) { console.error(`Failed to delete S3 object for ${pictureUrl}:`, e); }
-        //     }
-        // }
+
 
         res.json({ message: 'Pet deleted successfully' }); // Updated message
     } catch (error) {

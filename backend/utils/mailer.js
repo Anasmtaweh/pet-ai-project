@@ -11,14 +11,14 @@ if (!config.EMAIL_USER || !config.EMAIL_PASS) {
     console.warn("---------------------------------------------------------------------");
 }
 
-// Create a reusable transporter object
-// Only create it if config exists, otherwise mail attempts will fail anyway
+
+
 let transporter;
 if (config.EMAIL_USER && config.EMAIL_PASS) {
     transporter = nodemailer.createTransport({
-        service: 'gmail', // Or your email service provider
+        service: 'gmail', // email service provider
         auth: {
-            user: config.EMAIL_USER, // Your Gmail address from config/env
+            user: config.EMAIL_USER, //  Gmail address from config/env
             pass: config.EMAIL_PASS, // Your Gmail app-specific password from config/env
         },
     });
@@ -52,8 +52,7 @@ if (config.EMAIL_USER && config.EMAIL_PASS) {
 const sendEmail = async (mailOptions) => {
     if (!transporter) {
         console.error(`Cannot send email ("${mailOptions.subject}" to ${mailOptions.to}): Email transporter is not configured.`);
-        // Optionally throw an error or return a failure status
-        // throw new Error("Email service is not configured.");
+        
         return; // Exit silently if not configured
     }
 
@@ -104,22 +103,22 @@ const sendPasswordResetEmail = async (toEmail, resetToken) => {
  * @param {Date} eventStartTime - The start time of the event occurrence (as UTC Date object).
  */
 const sendReminderEmail = async (toEmail, eventTitle, eventStartTime) => {
-    // --- MODIFIED: Format time using the correct timezone ---
+    // ---  Format time using the correct timezone ---
     const reminderTimezone = "Asia/Beirut"; // Define the target timezone
     // Convert the UTC Date object to the target timezone before formatting
     const formattedStartTime = moment(eventStartTime).tz(reminderTimezone).format('h:mm a on dddd, MMMM Do YYYY');
-    // --- END MODIFICATION ---
+    // --- END  ---
 
     const mailOptions = {
         to: toEmail,
         subject: `Reminder: ${eventTitle}`,
-        // --- MODIFIED: Use the correctly formatted time ---
+        // ---  Use the correctly formatted time ---
         html: `<p>This is a reminder for your scheduled event:</p>
                <p><b>${eventTitle}</b></p>
                <p>Starting around: ${formattedStartTime}</p>
                <p>Have a great day!</p>`,
         text: `Reminder for your scheduled event: ${eventTitle}\nStarting around: ${formattedStartTime}\n\nHave a great day!`
-        // --- END MODIFICATION ---
+        // --- END  ---
     };
 
     await sendEmail(mailOptions); // Use the generic sendEmail function
@@ -130,5 +129,5 @@ const sendReminderEmail = async (toEmail, eventTitle, eventStartTime) => {
 module.exports = {
     sendPasswordResetEmail,
     sendReminderEmail,
-    // You could also export sendEmail if needed for other types of emails
+    
 };

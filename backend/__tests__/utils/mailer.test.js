@@ -1,6 +1,6 @@
 // c:\Users\Anas\Desktop\backend\__tests__\utils\mailer.test.js
 
-const nodemailer = require('nodemailer'); // Keep the original import for type hints if needed
+const nodemailer = require('nodemailer'); 
 const moment = require('moment-timezone');
 
 // --- Define the mock functions FIRST ---
@@ -22,7 +22,7 @@ jest.mock('nodemailer', () => ({
 // --- End Mocking nodemailer ---
 
 
-// --- Mock the config module (path corrected previously) ---
+// --- Mock the config module  ---
 // This mock provides the DEFAULT VALID config for most tests
 jest.mock('../../config/config', () => ({
     EMAIL_USER: 'test@example.com',

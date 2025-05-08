@@ -36,7 +36,7 @@ jobs:
           # cache-dependency-path: backend/yarn.lock
           # --- END REMOVE ---
 
-      # Enable Corepack (Still important for subsequent steps)
+      # Enable Corepack 
       - name: Enable Corepack
         run: corepack enable
 
@@ -51,7 +51,7 @@ jobs:
           CI: true
           NODE_ENV: test
 
-  # --- DEPLOY JOB (Remains the same) ---
+  # --- DEPLOY JOB  ---
   build-deploy:
     name: Build and Deploy Backend
     runs-on: ubuntu-latest

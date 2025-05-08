@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const Schedule = require('../models/Schedule');
-const User = require('../models/User'); // Keep if needed, though not used directly in routes
+const User = require('../models/User'); 
 const RecentActivity = require('../models/RecentActivity');
 const mongoose = require('mongoose'); // Import mongoose to check ObjectId validity
 
@@ -38,11 +38,7 @@ router.post('/add', async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(owner)) {
             return res.status(400).json({ message: 'Invalid owner ID format' });
         }
-        // Optional: Check if owner exists (more robust)
-        // const ownerExists = await User.findById(owner);
-        // if (!ownerExists) {
-        //     return res.status(404).json({ message: 'Owner not found' });
-        // }
+ 
 
         const newSchedule = new Schedule({
             title,
@@ -53,7 +49,7 @@ router.post('/add', async (req, res) => {
             repeatType,
             repeatDays,
             owner,
-            exceptionDates // Include exceptions if provided
+            exceptionDates 
         });
         await newSchedule.save(); // Mongoose validation runs here
 
@@ -95,13 +91,13 @@ router.put('/:id', async (req, res) => {
              return res.status(400).json({ message: 'No update data provided.' });
         }
 
-        // --- FIX: Add runValidators: true ---
+        // ---  Add runValidators: true ---
         const updatedSchedule = await Schedule.findByIdAndUpdate(
             scheduleId,
             updateData, // Pass only the fields to update
             { new: true, runValidators: true } // Return updated doc AND run validators
         );
-        // --- End FIX ---
+        // --- End  ---
 
         if (!updatedSchedule) {
             return res.status(404).json({ message: 'Schedule not found' });
@@ -165,7 +161,7 @@ router.post('/:id/exception', async (req, res) => {
              return res.status(400).json({ message: 'Invalid occurrence date format provided.' });
         }
 
-        // Find the rule and add the date to the exceptions array
+        
         // Using $addToSet to prevent duplicate exception dates
         const updatedSchedule = await Schedule.findByIdAndUpdate(
             ruleId,
@@ -177,7 +173,7 @@ router.post('/:id/exception', async (req, res) => {
             return res.status(404).json({ message: 'Schedule rule not found' });
         }
 
-        // Optional: Add recent activity? Maybe not necessary for exceptions.
+        
 
         res.json({ message: 'Occurrence marked as exception.', schedule: updatedSchedule });
 

@@ -29,7 +29,7 @@ const sentReminderSchema = new mongoose.Schema({
     }
 });
 
-// You might want to explicitly create the TTL index if 'expires' doesn't work as expected
+
 // sentReminderSchema.index({ sentAt: 1 }, { expireAfterSeconds: 7200 });
 
 const SentReminder = mongoose.model('SentReminder', sentReminderSchema, 'sentReminders');

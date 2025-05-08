@@ -1,6 +1,6 @@
 // CORRECTED version of c:\Users\Anas\M5\pet-ai-project\backend\config\jwtSecret.js
 
-const config = require('./config'); // Assuming config.js reads process.env.JWT_SECRET
+const config = require('./config'); 
 
 // Validate that the JWT_SECRET was actually loaded from the environment via config.js
 if (!config.JWT_SECRET) {

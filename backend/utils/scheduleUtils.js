@@ -100,21 +100,19 @@ const generateOccurrencesInRange = (rule, windowStart, windowEnd) => {
                 // Calculate the end time based on the duration
                 const occurrenceEnd = occurrenceStart.clone().add(dailyDuration);
 
-                // FINAL CHECK: Compare occurrenceStart (UTC) with windowStart/windowEnd (also UTC)
-                // Use isBetween with inclusivity '[)' -> >= windowStart and < windowEnd
-                // Also check against exceptions (which are UTC timestamps)
+
                 if (occurrenceStart.isBetween(windowStartMoment, windowEndMoment, undefined, '[)') &&
                     !exceptionTimestamps.has(occurrenceStart.valueOf()))
                 {
-                    // --- MODIFIED OCCURRENCE OBJECT: Use ownerId ---
+                    // ---  OCCURRENCE OBJECT: Use ownerId ---
                     occurrences.push({
-                        ruleId: rule._id.toString(), // Ensure ruleId is a string if it's an ObjectId
-                        ownerId: rule.ownerId, // Use ownerId from the rule object
+                        ruleId: rule._id.toString(), 
+                        ownerId: rule.ownerId, 
                         title: rule.title,
                         start: occurrenceStart.toDate(), // Store JS Date object (represents UTC)
                         end: occurrenceEnd.toDate(),     // Store JS Date object (represents UTC)
                     });
-                    // --- END MODIFICATION ---
+                    // --- END  ---
                 }
             }
             // Move to the next day (UTC) for the loop

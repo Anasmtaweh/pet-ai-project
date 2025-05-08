@@ -19,7 +19,6 @@ SentReminder.prototype.save = mockSave;
 
 describe('Reminder Cron Job Logic', () => {
   // --- MOCK SETUP FOR find().populate() ---
-  // Define mocks outside beforeEach so they are accessible in tests
   const mockPopulate = jest.fn(); // Mock for the .populate() method
   const mockFind = jest.fn(() => ({ // Mock for Schedule.find()
       populate: mockPopulate // .find() returns an object with a mock .populate
@@ -144,7 +143,7 @@ describe('Reminder Cron Job Logic', () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 
-  // Consider adding more tests:
+  // Future Tests that can be added:
   // - Test case where Schedule.find() returns an empty array
   // - Test case where generateOccurrencesInRange returns an empty array
   // - Test case where populate fails (mockPopulate.mockRejectedValue(new Error('DB Error')))

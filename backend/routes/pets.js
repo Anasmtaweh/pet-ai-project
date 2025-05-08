@@ -11,7 +11,7 @@ const Pet = require('../models/Pet');
 const RecentActivity = require('../models/RecentActivity');
 const { uploadFileToS3, deleteFileFromS3 } = require('../utils/s3Utils');
 
-// --- Multer Configuration (ensure this is at the top of the file or accessible) ---
+// --- Multer Configuration  ---
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
@@ -335,7 +335,7 @@ router.put('/:id', (req, res, next) => {
                     const oldPictureUrl = petToUpdate.pictures[0]; // Assuming only one picture
                     try {
                         const url = new URL(oldPictureUrl);
-                        const oldS3Key = url.pathname.substring(1); // Remove leading '/'
+                        const oldS3Key = url.pathname.substring(1); 
                         if (oldS3Key) {
                             console.log(`Attempting to delete old S3 object: ${oldS3Key}`);
                             await deleteFileFromS3(oldS3Key);
@@ -343,7 +343,7 @@ router.put('/:id', (req, res, next) => {
                     } catch (s3DeleteError) {
                         console.error(`Failed to delete old S3 object ${oldPictureUrl}:`, s3DeleteError);
                         // Log and continue, or return error based on strictness
-                        // For now, we'll log and continue to allow new picture upload
+                        
                     }
                 }
 
@@ -385,7 +385,7 @@ router.put('/:id', (req, res, next) => {
                 // This case should ideally be caught by petToUpdate check, but as a safeguard:
                 return res.status(404).json({ message: 'Pet not found after update attempt.' });
             }
-            // Optional: Log activity for pet update
+           
             // await logActivity('pet_updated', `Pet details updated: ${updatedPet.name}`, updatedPet.owner, updatedPet._id);
             res.json(updatedPet);
 

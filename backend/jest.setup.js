@@ -23,7 +23,3 @@ process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'test-openai-key';
 // Add dummy DB_URL if not set (though tests use MongoMemoryServer)
 process.env.DB_URL = process.env.DB_URL || 'mongodb://localhost:27017/testdb_jest';
 
-// Add any other required environment variables your application checks
-// during initialization below, using dummy values.
-// Example:
-// process.env.SOME_OTHER_API_KEY = process.env.SOME_OTHER_API_KEY || 'dummy-key';

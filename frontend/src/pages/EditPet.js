@@ -23,9 +23,7 @@ function EditPet() {
     const [error, setError] = useState('');
 
     const [isOtherBreed, setIsOtherBreed] = useState(false);
-    // initialBreed can be helpful to compare if the breed was originally "Other"
-    // but the primary state for the form will be `breed` and `isOtherBreed`.
-    // const [initialBreedFromDB, setInitialBreedFromDB] = useState(''); // Optional: if needed for complex comparisons
+
 
     const [currentPictureUrl, setCurrentPictureUrl] = useState(''); // To display current or new preview
     const [newPictureFile, setNewPictureFile] = useState(null);   // To hold the new file object
@@ -97,9 +95,7 @@ function EditPet() {
             reader.readAsDataURL(file);
         } else {
             setNewPictureFile(null);
-            // Optional: Revert to original picture if file input is cleared
-            // For now, if cleared, the preview remains the last selected one or original.
-            // To revert, you'd need to store the original DB picture URL separately.
+
         }
     };
 

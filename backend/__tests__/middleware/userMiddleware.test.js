@@ -1,6 +1,6 @@
 // c:\Users\Anas\Desktop\backend\__tests__\middleware\userMiddleware.test.js
 
-const userMiddleware = require('../../middleware/userMiddleware'); // Adjust path if needed
+const userMiddleware = require('../../middleware/userMiddleware'); 
 const jwt = require('jsonwebtoken');
 const { createRequest, createResponse } = require('node-mocks-http');
 

@@ -2,7 +2,7 @@
 
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const SentReminder = require('../../models/SentReminder'); // Adjust path if necessary
+const SentReminder = require('../../models/SentReminder'); 
 
 let mongoServer;
 
@@ -14,8 +14,6 @@ beforeAll(async () => {
     await mongoose.disconnect();
   }
   await mongoose.connect(mongoUri);
-  // --- ADD THIS: Ensure indexes are created before tests run ---
-  // This is crucial for the unique constraint test to work reliably
   await SentReminder.syncIndexes();
   // --- END ADDITION ---
 });
@@ -25,18 +23,14 @@ afterAll(async () => {
   await mongoServer.stop();
 });
 
-// --- MODIFY: Use afterEach for cleanup ---
+// --- Use afterEach for cleanup ---
 afterEach(async () => {
   // Clear the SentReminder collection AFTER each test
   // This ensures indexes are not dropped between tests within the same suite
   await SentReminder.deleteMany({});
 });
 
-// --- REMOVE beforeEach cleanup ---
-// beforeEach(async () => {
-//   // Clear the SentReminder collection before each test
-//   await SentReminder.deleteMany({});
-// });
+
 // --- End Test Setup ---
 
 

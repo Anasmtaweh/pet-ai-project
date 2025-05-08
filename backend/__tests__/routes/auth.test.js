@@ -140,14 +140,7 @@ describe('Auth Routes', () => {
 
       compareSpy.mockRestore(); // Clean up the spy
 
-      // // ALTERNATIVE: NO SPY (Stricter Integration - Requires correct password)
-      // const response = await request(app)
-      //   .post('/auth/login')
-      //   .send({ email: 'test@example.com', password: 'ValidPass123!' }); // Use the correct plain password
 
-      // expect(response.statusCode).toBe(200);
-      // expect(response.body.message).toBe('Logged in successfully');
-      // expect(response.body).toHaveProperty('token');
     });
 
     it('should return 400 for invalid password', async () => {
@@ -164,12 +157,6 @@ describe('Auth Routes', () => {
 
         compareSpy.mockRestore();
 
-        // // ALTERNATIVE: NO SPY
-        // const response = await request(app)
-        //     .post('/auth/login')
-        //     .send({ email: 'test@example.com', password: 'WrongPassword!' });
-        // expect(response.statusCode).toBe(400);
-        // expect(response.body.message).toBe('Invalid credentials');
     });
 
      it('should return 400 for non-existent email', async () => {
@@ -198,15 +185,9 @@ describe('Auth Routes', () => {
 
         compareSpy.mockRestore();
 
-        // // ALTERNATIVE: NO SPY (Password must be correct)
-        // const response = await request(app)
-        //     .post('/auth/login')
-        //     .send({ email: testUser.email, password: 'ValidPass123!' });
-        // expect(response.statusCode).toBe(403);
-        // expect(response.body.message).toBe('Your account is inactive. Please contact support.');
     });
   });
 
-  // Add describe blocks and tests for other routes like /user, /settings/password, /forgot-password etc.
+
 
 });

@@ -109,7 +109,7 @@ function AdminPetManagement() {
                 </tbody>
             </Table>
 
-            {/* --- Delete Confirmation Modal --- */}
+            {}
             <Modal show={showModal} onHide={handleCloseModal}>
                 <Modal.Header closeButton>
                     <Modal.Title>Confirm Delete</Modal.Title>

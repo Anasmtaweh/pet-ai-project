@@ -56,7 +56,7 @@ function AdminUserManagement() {
         }
     };
 
-    // --- MODIFIED FUNCTION: Renamed and changed logic ---
+    // ---  FUNCTION ---
     const handleSetStatus = async (userId, desiredStatus) => { // Accepts the desired boolean status
         try {
             // Send the DESIRED state directly to the backend
@@ -75,7 +75,7 @@ function AdminUserManagement() {
             setError(err.response?.data?.message || 'An error occurred while setting user status.');
         }
     };
-    // --- END OF MODIFICATION ---
+    // --- END  ---
 
     return (
         <Container className={styles.userManagementContainer}>
@@ -103,7 +103,7 @@ function AdminUserManagement() {
                                     Delete
                                 </Button>
 
-                                {/* --- MODIFIED onClick handlers --- */}
+                                {/* ---  onClick handlers --- */}
                                 {user.isActive ? (
                                     // If user is Active, show Deactivate button
                                     <Button
@@ -127,7 +127,7 @@ function AdminUserManagement() {
                                         Activate
                                     </Button>
                                 )}
-                                {/* --- END OF MODIFICATION --- */}
+                                {/* --- END  --- */}
 
                             </td>
                         </tr>
@@ -135,7 +135,7 @@ function AdminUserManagement() {
                 </tbody>
             </Table>
 
-            {/* --- Modal remains the same --- */}
+            {/* --- Modal  --- */}
             <Modal show={showModal} onHide={handleCloseModal}>
                 <Modal.Header closeButton>
                     <Modal.Title>Confirm Delete</Modal.Title>
