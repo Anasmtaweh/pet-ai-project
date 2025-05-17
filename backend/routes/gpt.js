@@ -77,8 +77,8 @@ router.post('/ask', async (req, res) => {
             return res.status(400).json({ error: 'Please provide a question.' });
         }
 
-        const systemPrompt = `
-You are a helpful assistant specializing in pet care and pet products available in Lebanon. If the user asks about pet shops or where to buy pet products in specific cities like Beirut, recommend shops from the following list that match the location. If the question is not related to pets, pet care, or pet products, respond with: "I can only assist you in pet-related questions."
+        const systemPrompt = `You are a helpful assistant specializing in pet care and products available in Lebanon. If a user's question is related to pets or pet products, provide relevant information, including product suggestions and where they can be purchased in Lebanon. If the question is unrelated to pets, politely inform the user that you specialize in pet-related topics.
+
 
 Lebanon Pet Products: ${JSON.stringify(LEBANON_PET_PRODUCTS)}
         `.trim();
