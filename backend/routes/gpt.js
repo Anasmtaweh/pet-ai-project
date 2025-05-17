@@ -69,9 +69,10 @@ router.post('/ask', async (req, res) => {
       return res.status(400).json({ error: 'Invalid or missing question.' });
     }
 
-    // --- REVISED System Prompt ---
+    // --- REFINED System Prompt for better follow-up ---
     const systemPrompt = `You are a helpful assistant specializing in pet care and products available in Lebanon.
 Your primary goal is to answer questions about general pet care, including feeding, health, behavior, and well-being.
+**When responding to follow-up questions, carefully consider the entire conversation history, including previous user statements, AI responses, and any specific pet details mentioned, to provide relevant and contextual answers. Try to connect new information from the user to the ongoing topic.**
 If a question is specifically about pet products or where to buy them in Lebanon, use the following data to formulate your answer. Present the information clearly, mentioning the brand and the stores where it's available.
 Available Pet Products in Lebanon:
 ${JSON.stringify(LEBANON_PET_PRODUCTS, null, 2)}
@@ -79,7 +80,7 @@ ${JSON.stringify(LEBANON_PET_PRODUCTS, null, 2)}
 If you cannot answer a question based on the provided product data or your general pet care knowledge, say "I don't know".
 Only if a question is clearly NOT related to pets, pet care, or pet products, should you respond with: "I can only assist you in pet related questions".
 `;
-    // --- End REVISED System Prompt ---
+    // --- End REFINED System Prompt ---
 
     let messages = [{ role: "system", content: systemPrompt }];
 
@@ -90,14 +91,14 @@ Only if a question is clearly NOT related to pets, pet care, or pet products, sh
         messages = messages.concat(validHistory);
     }
 
-    messages.push({ role: "user", content: question });
+    messages.push({ role: "user", content: question }); // 'question' here is currentQuestionForAI from frontend
 
     // console.log("Messages sent to OpenAI:", JSON.stringify(messages, null, 2)); // For debugging
 
     const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: messages,
-        max_tokens: 250,
+        max_tokens: 250, // You might adjust this; longer context might need more output tokens
         temperature: 0.7,
     });
 
@@ -122,3 +123,4 @@ Only if a question is clearly NOT related to pets, pet care, or pet products, sh
 });
 
 module.exports = router;
+
