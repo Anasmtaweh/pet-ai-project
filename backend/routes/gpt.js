@@ -13,17 +13,17 @@ const LEBANON_PET_PRODUCTS = {
             brand: "Whiskas",
             description: "Balanced wet and dry food designed to meet cats' nutritional needs.",
             stores: [
-                { name: "Carrefour Lebanon", cities: ["Beirut", "Online"] },
-                { name: "Spinneys Lebanon", cities: ["Beirut", "Online"] }
+                { name: "Carrefour Lebanon", online: true },
+                { name: "Spinneys Lebanon", online: true }
             ]
         },
         {
             brand: "Royal Canin",
             description: "Specialized formulas addressing specific feline health requirements.",
             stores: [
-                { name: "Petriotics", cities: ["Beirut", "Online"] },
-                { name: "Vetomall", cities: ["Beirut", "Online"] },
-                { name: "Buddy Pet Shop", cities: ["Byblos", "Online"] }
+                { name: "Petriotics", online: true },
+                { name: "Vetomall", online: true },
+                { name: "Buddy Pet Shop", online: true }
             ]
         }
     ],
@@ -32,94 +32,108 @@ const LEBANON_PET_PRODUCTS = {
             brand: "Royal Canin",
             description: "Tailored nutrition for dogs of all breeds and life stages.",
             stores: [
-                { name: "Petriotics", cities: ["Beirut", "Online"] },
-                { name: "Vetomall", cities: ["Beirut", "Online"] },
-                { name: "Buddy Pet Shop", cities: ["Byblos", "Online"] },
-                { name: "Carrefour Lebanon", cities: ["Beirut", "Online"] },
-                { name: "Spinneys Lebanon", cities: ["Beirut", "Online"] }
+                { name: "Petriotics", online: true },
+                { name: "Vetomall", online: true },
+                { name: "Buddy Pet Shop", online: true },
+                { name: "Carrefour Lebanon", online: true },
+                { name: "Spinneys Lebanon", online: true }
             ]
         },
         {
             brand: "Josera",
             description: "High-quality German pet food with natural ingredients.",
             stores: [
-                { name: "Petsville", cities: ["Baabda", "Online"] }
+                { name: "Petsville", online: true }
             ]
         }
     ]
 };
 
-function extractRequestedType(question) {
-    const lower = question.toLowerCase();
-    if (lower.includes("cat")) return "cat_food";
-    if (lower.includes("dog")) return "dog_food";
-    return null;
-}
-
-function isAskingAboutLocation(question) {
-    return /where.*(buy|find|located|location|available)/i.test(question);
-}
+// Memory of last mentioned brands to track follow-ups
+let lastSuggestedBrands = [];
 
 router.post('/ask', async (req, res) => {
     try {
         const { question, history } = req.body;
-
         if (!question || question.trim() === '') {
             return res.status(400).json({ error: 'Please provide a question.' });
         }
 
-        const petType = extractRequestedType(question);
+        const lowerQ = question.toLowerCase();
 
-        let previousAnswer = null;
-        if (Array.isArray(history)) {
-            const lastAssistantResponse = [...history].reverse().find(msg => msg.role === "assistant");
-            if (lastAssistantResponse) previousAnswer = lastAssistantResponse.content;
-        }
+        // === CASE 1: User asks for food advice ===
+        const isFoodQuery = /(feed|food|recommend).*(cat|dog|him|her|my pet)/i.test(question);
+        const isCat = /cat|kitten/i.test(question);
+        const isDog = /dog|puppy/i.test(question);
 
-        // LOCATION FOLLOW-UP
-        if (isAskingAboutLocation(question) && previousAnswer) {
-            // Extract store names from the previous response
-            const allBrands = [...LEBANON_PET_PRODUCTS.cat_food, ...LEBANON_PET_PRODUCTS.dog_food];
-            const mentionedShops = [];
+        if (isFoodQuery) {
+            let suggestions = [];
+            lastSuggestedBrands = [];
 
-            allBrands.forEach(brand => {
-                if (previousAnswer.includes(brand.brand)) {
-                    brand.stores.forEach(store => {
-                        mentionedShops.push({
-                            brand: brand.brand,
-                            store: store.name,
-                            cities: store.cities.filter(c => c !== "Online")
-                        });
-                    });
-                }
-            });
+            const products = isDog ? LEBANON_PET_PRODUCTS.dog_food : LEBANON_PET_PRODUCTS.cat_food;
 
-            let locationText = `Here are the physical store locations for the previously mentioned products:\n`;
-            locationText += mentionedShops.map(s =>
-                `- **${s.brand}** at **${s.store}**: ${s.cities.join(", ")}`
-            ).join("\n");
+            for (const item of products) {
+                lastSuggestedBrands.push(item.brand); // save for follow-up
+                const storeList = item.stores.map(store =>
+                    `- ${store.name} (${store.online ? "Online store available" : "No online store"})`
+                ).join('\n');
 
-            return res.json({ answer: locationText });
-        }
-
-        // NORMAL RECOMMENDATION MODE
-        const recommendations = petType ? LEBANON_PET_PRODUCTS[petType] : [];
-
-        if (recommendations.length === 0) {
-            return res.json({ answer: "Please specify if you're asking about cat or dog food so I can help you better." });
-        }
-
-        let responseText = `Here are some recommended ${petType === "cat_food" ? "cat" : "dog"} food products:\n`;
-
-        for (const item of recommendations) {
-            responseText += `\n**${item.brand}**: ${item.description}\nAvailable at:\n`;
-            for (const store of item.stores) {
-                const hasOnline = store.cities.includes("Online");
-                responseText += `- ${store.name}${hasOnline ? " (Online store available)" : ""}\n`;
+                suggestions.push(
+                    `**${item.brand}**: ${item.description}\nAvailable at:\n${storeList}`
+                );
             }
+
+            return res.json({ answer: suggestions.join('\n\n') });
         }
 
-        return res.json({ answer: responseText });
+        // === CASE 2: Follow-up asking "where can I buy them" ===
+        const isWhereFollowUp = /(where.*(buy|find|get|available|store)|which.*store)/i.test(lowerQ);
+        if (isWhereFollowUp && lastSuggestedBrands.length > 0) {
+            let results = [];
+
+            for (const category of Object.values(LEBANON_PET_PRODUCTS)) {
+                for (const product of category) {
+                    if (lastSuggestedBrands.includes(product.brand)) {
+                        const storeList = product.stores.map(store =>
+                            `- ${store.name} (${store.online ? "Online store available" : "No online store"})`
+                        ).join('\n');
+                        results.push(`**${product.brand}** is available at:\n${storeList}`);
+                    }
+                }
+            }
+
+            return res.json({ answer: results.join('\n\n') });
+        }
+
+        // === Default fallback to OpenAI ===
+        const systemPrompt = `
+You are a helpful assistant that suggests pet food products available in Lebanon.
+If asked what to feed a cat or dog, recommend suitable products with short descriptions, followed by a list of stores (with online availability noted).
+Do NOT include specific locations unless the user explicitly asks "Where are these stores?" or similar.
+
+If the user is asking a general or unrelated question, answer normally.
+`.trim();
+
+        let messages = [{ role: "system", content: systemPrompt }];
+
+        if (history && Array.isArray(history)) {
+            const validHistory = history.filter(
+                item => (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string'
+            );
+            messages = messages.concat(validHistory);
+        }
+
+        messages.push({ role: "user", content: question });
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: messages,
+            max_tokens: 500,
+            temperature: 0.7,
+        });
+
+        const aiContent = completion.choices[0].message.content.trim();
+        return res.json({ answer: aiContent });
 
     } catch (error) {
         console.error("OpenAI Error:", error);
