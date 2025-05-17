@@ -1,3 +1,4 @@
+// routes/gpt.js
 const express = require('express');
 const router = express.Router();
 const OpenAI = require("openai");
@@ -7,28 +8,7 @@ const openai = new OpenAI({
     apiKey: config.openaiApiKey,
 });
 
-// Updated Lebanon Pet Products with real stores and locations
 const LEBANON_PET_PRODUCTS = {
-    dog_food: [
-        {
-            brand: "Royal Canin",
-            stores: [
-                { name: "Petriotics", cities: ["Beirut", "Online"] },
-                { name: "Vetomall", cities: ["Beirut", "Online"] },
-                { name: "Buddy Pet Shop", cities: ["Byblos", "Online"] },
-                { name: "Carrefour Lebanon", cities: ["Beirut", "Online"] },
-                { name: "Spinneys Lebanon", cities: ["Beirut", "Online"] }
-            ],
-            description: "Tailored nutrition for dogs of all breeds and life stages."
-        },
-        {
-            brand: "Josera",
-            stores: [
-                { name: "Petsville", cities: ["Baabda", "Online"] }
-            ],
-            description: "High-quality German pet food with natural ingredients."
-        }
-    ],
     cat_food: [
         {
             brand: "Whiskas",
@@ -48,23 +28,24 @@ const LEBANON_PET_PRODUCTS = {
             description: "Specialized formulas addressing specific feline health requirements."
         }
     ],
-    toys: [
+    dog_food: [
         {
-            brand: "KONG",
+            brand: "Royal Canin",
             stores: [
-                { name: "Petsville", cities: ["Baabda", "Online"] },
                 { name: "Petriotics", cities: ["Beirut", "Online"] },
-                { name: "Buddy Pet Shop", cities: ["Byblos", "Online"] }
+                { name: "Vetomall", cities: ["Beirut", "Online"] },
+                { name: "Buddy Pet Shop", cities: ["Byblos", "Online"] },
+                { name: "Carrefour Lebanon", cities: ["Beirut", "Online"] },
+                { name: "Spinneys Lebanon", cities: ["Beirut", "Online"] }
             ],
-            description: "Durable toys that provide mental and physical stimulation for dogs."
+            description: "Tailored nutrition for dogs of all breeds and life stages."
         },
         {
-            brand: "Petstages",
+            brand: "Josera",
             stores: [
-                { name: "Ubuy Lebanon", cities: ["Online"] },
-                { name: "Buddy Pet Shop", cities: ["Byblos", "Online"] }
+                { name: "Petsville", cities: ["Baabda", "Online"] }
             ],
-            description: "Innovative toys catering to different stages of pet development."
+            description: "High-quality German pet food with natural ingredients."
         }
     ]
 };
@@ -72,16 +53,15 @@ const LEBANON_PET_PRODUCTS = {
 router.post('/ask', async (req, res) => {
     try {
         const { question, history } = req.body;
-
         if (!question || question.trim() === '') {
             return res.status(400).json({ error: 'Please provide a question.' });
         }
 
-        const systemPrompt = `You are a helpful assistant specializing in pet care and products available in Lebanon. If a user's question is related to pets or pet products, provide relevant information, including product suggestions and where they can be purchased in Lebanon. If the question is unrelated to pets, politely inform the user that you specialize in pet-related topics.
-
-
-Lebanon Pet Products: ${JSON.stringify(LEBANON_PET_PRODUCTS)}
-        `.trim();
+        const systemPrompt = `
+You are a helpful assistant specializing in pet care and products available in Lebanon.
+If the question is about feeding a cat or dog, suggest food brands available in Lebanon.
+Do not mention stores or locations. Only suggest products and their descriptions.
+`.trim();
 
         let messages = [{ role: "system", content: systemPrompt }];
 
@@ -101,24 +81,38 @@ Lebanon Pet Products: ${JSON.stringify(LEBANON_PET_PRODUCTS)}
             temperature: 0.7,
         });
 
-        const answer = completion.choices[0].message.content.trim();
-        res.json({ answer });
+        let aiContent = completion.choices[0].message.content.trim();
+
+        // --- Post-process to inject store info if products are mentioned ---
+        const brands = [...LEBANON_PET_PRODUCTS.cat_food, ...LEBANON_PET_PRODUCTS.dog_food];
+        const beirutStores = [];
+
+        for (const product of brands) {
+            if (aiContent.toLowerCase().includes(product.brand.toLowerCase())) {
+                for (const store of product.stores) {
+                    if (store.cities.includes("Beirut")) {
+                        beirutStores.push({
+                            brand: product.brand,
+                            store: store.name
+                        });
+                    }
+                }
+            }
+        }
+
+        if (beirutStores.length > 0) {
+            aiContent += "\n\nHere are stores in or near Beirut where you can find the recommended products:\n";
+            const lines = beirutStores.map(bs => `- **${bs.brand}** at **${bs.store}**`);
+            aiContent += lines.join("\n");
+        }
+
+        res.json({ answer: aiContent });
 
     } catch (error) {
-        console.error("Error with OpenAI API:", error);
-        let errorMessage = "An error occurred.";
-        if (error instanceof OpenAI.APIError) {
-            errorMessage = error.message || "OpenAI API Error";
-            if (error.response && error.response.data && error.response.data.error) {
-                errorMessage = error.response.data.error.message;
-            } else if (error.status) {
-                errorMessage = `OpenAI API Error (Status: ${error.status}): ${error.message}`;
-            }
-        } else if (error.message) {
-            errorMessage = error.message;
-        }
-        res.status(error.status || 500).json({ error: errorMessage });
+        console.error("OpenAI Error:", error);
+        res.status(500).json({ error: error.message || "An error occurred." });
     }
 });
 
 module.exports = router;
+
