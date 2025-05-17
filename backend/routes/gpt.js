@@ -39,7 +39,7 @@ const LEBANON_PET_PRODUCTS = {
       brand: 'Royal Canin',
       stores: [
         { name: 'Petriotics', online: true },
-        { name 'Vetomall', online: true },
+        { name: 'Vetomall', online: true },
         { name: 'Buddy Pet Shop', online: true },
       ]
     },
