@@ -9,7 +9,6 @@ require('dotenv').config(); // Ensure dotenv is loaded
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Local database of pet food products available in Lebanon
-// Using the structure from your 'new' gpt.js as it seems more detailed
 const LEBANON_PET_PRODUCTS = {
   cat: [
     {
@@ -40,7 +39,7 @@ const LEBANON_PET_PRODUCTS = {
       brand: 'Royal Canin',
       stores: [
         { name: 'Petriotics', online: true },
-        { name: 'Vetomall', online: true },
+        { name 'Vetomall', online: true },
         { name: 'Buddy Pet Shop', online: true },
       ]
     },
@@ -64,54 +63,43 @@ const LEBANON_PET_PRODUCTS = {
 // POST /gpt/ask
 router.post('/ask', async (req, res) => {
   try {
-    // Expect 'question' and 'history' from the frontend
-    // 'history' should be an array of message objects: [{role: 'user', content: '...'}, {role: 'assistant', content: '...'}]
-    const { question, history = [] } = req.body; // Default history to empty array if not provided
+    const { question, history = [] } = req.body;
 
     if (!question || typeof question !== 'string' || question.trim() === '') {
       return res.status(400).json({ error: 'Invalid or missing question.' });
     }
 
-    // --- System Prompt: Include data and instructions for the AI ---
+    // --- REVISED System Prompt ---
     const systemPrompt = `You are a helpful assistant specializing in pet care and products available in Lebanon.
-If the question is not related to pets or pet products, answer "I can only assist you in pet related questions".
-If the question is about pet products or where to buy them, use the following data about products and stores in Lebanon to formulate your answer.
-Present the information clearly, mentioning the brand and the stores where it's available.
-If you don't know the answer based on the provided data or general pet knowledge, say "I don't know".
-
+Your primary goal is to answer questions about general pet care, including feeding, health, behavior, and well-being.
+If a question is specifically about pet products or where to buy them in Lebanon, use the following data to formulate your answer. Present the information clearly, mentioning the brand and the stores where it's available.
 Available Pet Products in Lebanon:
 ${JSON.stringify(LEBANON_PET_PRODUCTS, null, 2)}
+
+If you cannot answer a question based on the provided product data or your general pet care knowledge, say "I don't know".
+Only if a question is clearly NOT related to pets, pet care, or pet products, should you respond with: "I can only assist you in pet related questions".
 `;
-    // --- End System Prompt ---
+    // --- End REVISED System Prompt ---
 
-
-    // Construct the messages array for the OpenAI API
-    // Start with the system prompt, then add the history, then the current user question
     let messages = [{ role: "system", content: systemPrompt }];
 
-    // Add previous conversation history if provided and valid
     if (history && Array.isArray(history)) {
-        // Basic validation for history items
         const validHistory = history.filter(
             item => (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string'
         );
         messages = messages.concat(validHistory);
     }
 
-    // Add the current user question
     messages.push({ role: "user", content: question });
 
-    // Optional: Log messages for debugging
-    // console.log("Messages sent to OpenAI:", JSON.stringify(messages, null, 2));
+    // console.log("Messages sent to OpenAI:", JSON.stringify(messages, null, 2)); // For debugging
 
-    // --- Call OpenAI API with the full conversation history ---
     const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo", // Or a newer model if available and desired
-        messages: messages, // Send the full conversation history
-        max_tokens: 250, // Increased max_tokens to allow for longer responses and history
-        temperature: 0.7, // Adjust temperature for creativity (0.7 is standard)
+        model: "gpt-3.5-turbo",
+        messages: messages,
+        max_tokens: 250,
+        temperature: 0.7,
     });
-    // --- End OpenAI API Call ---
 
     const answer = completion.choices[0].message.content.trim();
     res.json({ answer });
@@ -119,11 +107,9 @@ ${JSON.stringify(LEBANON_PET_PRODUCTS, null, 2)}
   } catch (error) {
     console.error("Error in /gpt/ask:", error);
     let errorMessage = "Something went wrong processing your question.";
-
-    // Improved error handling based on OpenAI API errors
     if (error instanceof OpenAI.APIError) {
         errorMessage = error.message || "OpenAI API Error";
-        if (error.response && error.response.data && error.response.data.error) {
+        if (error.response?.data?.error) {
             errorMessage = error.response.data.error.message;
         } else if (error.status) {
              errorMessage = `OpenAI API Error (Status: ${error.status}): ${error.message}`;
@@ -131,12 +117,8 @@ ${JSON.stringify(LEBANON_PET_PRODUCTS, null, 2)}
     } else if (error.message) {
         errorMessage = error.message;
     }
-
-    // Use error.status if available, otherwise default to 500
     res.status(error.status || 500).json({ error: errorMessage });
   }
 });
 
 module.exports = router;
-
-
