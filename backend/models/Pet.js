@@ -1,4 +1,4 @@
-// c:\Users\Anas\M5\pet-ai-project\backend\models\Pet.js
+// C:\Users\Anas\M5\pet-ai-project\backend\models\Pet.js
 const mongoose = require('mongoose');
 
 const petSchema = new mongoose.Schema({

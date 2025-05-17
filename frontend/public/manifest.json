@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "MISHTIKA",
+  "name": "MISHTIKA - Your Pet AI Companion",
+  "description": "Your Pet AI Companion",
   "icons": [
     {
       "src": "favicon.ico",
@@ -20,6 +21,7 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#5F9EA0",  
+  "background_color": "#FFFFFF" 
 }
+

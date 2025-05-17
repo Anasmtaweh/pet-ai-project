@@ -1,4 +1,4 @@
-// CORRECTED version of c:\Users\Anas\M5\pet-ai-project\backend\config\jwtSecret.js
+//  c:\Users\Anas\M5\pet-ai-project\backend\config\jwtSecret.js
 
 const config = require('./config'); 
 

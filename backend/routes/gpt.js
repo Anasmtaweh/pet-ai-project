@@ -3,30 +3,57 @@ const router = express.Router();
 const OpenAI = require("openai");
 const config = require('../config/config');
 
-// ✅ Correct way to initialize OpenAI in v4
 const openai = new OpenAI({
     apiKey: config.openaiApiKey,
 });
 
+// IMPORTANT: Update this object with REAL store names and product availability in Lebanon.
 const LEBANON_PET_PRODUCTS = {
-    "dog_food": [
-        {"brand": "Paws Lebanon", "stores": ["Barcode Vet", "Petio Lebanon"], "description": "High-quality kibble for all breeds."},
-        {"brand": "VetPlus", "stores": ["Petio Lebanon", "VetEmporium"], "description": "Veterinarian-recommended dog food."}
+    dog_food: [
+      {
+        brand: "PawPots",
+        stores: ["PawPots Online"],
+        description: "Fresh, vet-approved dog food made with human-grade ingredients."
+      },
+      {
+        brand: "Royal Canin",
+        stores: ["Petriotics", "Vetomall", "Buddy Pet Shop"],
+        description: "Tailored nutrition for dogs of all breeds and life stages."
+      }
     ],
-    "cat_food": [
-        {"brand": "Whiskas Lebanon", "stores": ["Petio Lebanon", "ZooPlus"], "description": "Popular wet and dry cat food."},
-        {"brand": "Royal Canin", "stores": ["Barcode Vet", "ZooPlus"], "description": "Premium cat food for specific needs."}
+    cat_food: [
+      {
+        brand: "Whiskas",
+        stores: ["Carrefour Lebanon", "Spinneys Lebanon", "MyKady"],
+        description: "Balanced wet and dry food designed to meet cats' nutritional needs."
+      },
+      {
+        brand: "Royal Canin",
+        stores: ["Petriotics", "Vetomall", "Buddy Pet Shop"],
+        description: "Specialized formulas addressing specific feline health requirements."
+      }
     ],
-    "toys": [
-        {"brand": "Kong", "stores": ["Barcode Vet", "Petio Lebanon"], "description": "Durable and interactive dog toys."},
-        {"brand": "Petstages", "stores": ["Petio Lebanon", "VetEmporium"], "description": "Variety of cat and dog toys."}
-    ],
-    // Add more categories as needed...
-};
+    toys: [
+      {
+        brand: "KONG",
+        stores: ["Petsville", "Petriotics", "Buddy Pet Shop"],
+        description: "Durable toys that provide mental and physical stimulation for dogs."
+      },
+      {
+        brand: "Petstages",
+        stores: ["Ubuy Lebanon", "Buddy Pet Shop"],
+        description: "Innovative toys catering to different stages of pet development."
+      }
+    ]
+  };
+  
 
 router.post('/ask', async (req, res) => {
     try {
-        const { question } = req.body;
+        // Expect 'question' and 'history' from the frontend
+        // 'history' should be an array of message objects: [{role: 'user', content: '...'}, {role: 'assistant', content: '...'}]
+        const { question, history } = req.body;
+
         if (!question || question.trim() === '') {
             return res.status(400).json({ error: 'Please provide a question.' });
         }
@@ -35,31 +62,52 @@ router.post('/ask', async (req, res) => {
 
 Lebanon Pet Products: ${JSON.stringify(LEBANON_PET_PRODUCTS)}`;
 
-        const messages = [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: question },
-        ];
+        // Construct the messages array
+        let messages = [{ role: "system", content: systemPrompt }];
 
-        // ✅ Correct way to call OpenAI in v4
+        // Add previous conversation history if provided and valid
+        if (history && Array.isArray(history)) {
+            // Basic validation for history items
+            const validHistory = history.filter(
+                item => (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string'
+            );
+            messages = messages.concat(validHistory);
+        }
+
+        // Add the current user question
+        messages.push({ role: "user", content: question });
+
+        // Optional: Log messages for debugging
+        // console.log("Messages sent to OpenAI:", JSON.stringify(messages, null, 2));
+
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
-            messages: messages,
-            max_tokens: 150,
+            messages: messages, // Send the full conversation history
+            max_tokens: 300, // You might need to adjust this based on history length
             temperature: 0.7,
         });
 
         const answer = completion.choices[0].message.content.trim();
         res.json({ answer });
+
     } catch (error) {
         console.error("Error with OpenAI API:", error);
         let errorMessage = "An error occurred.";
-        if (error.response) {
-            errorMessage = error.response.data.error.message; 
+        // Better error handling for OpenAI API errors
+        if (error instanceof OpenAI.APIError) {
+            errorMessage = error.message || "OpenAI API Error";
+            if (error.response && error.response.data && error.response.data.error) {
+                errorMessage = error.response.data.error.message;
+            } else if (error.status) {
+                 errorMessage = `OpenAI API Error (Status: ${error.status}): ${error.message}`;
+            }
         } else if (error.message) {
             errorMessage = error.message;
         }
-        res.status(500).json({ error: errorMessage });
+        // Use error.status if available, otherwise default to 500
+        res.status(error.status || 500).json({ error: errorMessage });
     }
 });
 
 module.exports = router;
+

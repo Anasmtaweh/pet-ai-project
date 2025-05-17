@@ -143,11 +143,6 @@ describe('Reminder Cron Job Logic', () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 
-  // Future Tests that can be added:
-  // - Test case where Schedule.find() returns an empty array
-  // - Test case where generateOccurrencesInRange returns an empty array
-  // - Test case where populate fails (mockPopulate.mockRejectedValue(new Error('DB Error')))
-  // - Test case where sendReminderEmail fails
-  // - Test case where SentReminder.save fails
+
 
 });
