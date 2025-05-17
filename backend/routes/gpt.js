@@ -1,11 +1,15 @@
+// c:\Users\Anas\M5\pet-ai-project\backend\routes\gpt.js
+
 const express = require('express');
 const router = express.Router();
 const { OpenAI } = require('openai');
-require('dotenv').config();
+require('dotenv').config(); // Ensure dotenv is loaded
 
+// Initialize OpenAI with API key from environment variables
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Local database of pet food products available in Lebanon
+// Using the structure from your 'new' gpt.js as it seems more detailed
 const LEBANON_PET_PRODUCTS = {
   cat: [
     {
@@ -57,98 +61,82 @@ const LEBANON_PET_PRODUCTS = {
   ]
 };
 
-// Extract brands mentioned in last assistant message in the conversation
-function extractLastSuggestedBrands(history) {
-  const brands = [];
-
-  if (!Array.isArray(history)) return brands;
-
-  for (let i = history.length - 1; i >= 0; i--) {
-    const msg = history[i];
-    if (msg.role === 'assistant' && typeof msg.content === 'string') {
-      const lower = msg.content.toLowerCase();
-
-      for (const category of Object.values(LEBANON_PET_PRODUCTS)) {
-        for (const product of category) {
-          if (lower.includes(product.brand.toLowerCase())) {
-            brands.push(product.brand);
-          }
-        }
-      }
-
-      if (brands.length > 0) break; // stop after finding one matching assistant message
-    }
-  }
-
-  return [...new Set(brands)];
-}
-
 // POST /gpt/ask
 router.post('/ask', async (req, res) => {
   try {
-    const { question, history = [] } = req.body;
+    // Expect 'question' and 'history' from the frontend
+    // 'history' should be an array of message objects: [{role: 'user', content: '...'}, {role: 'assistant', content: '...'}]
+    const { question, history = [] } = req.body; // Default history to empty array if not provided
 
-    if (!question || typeof question !== 'string') {
+    if (!question || typeof question !== 'string' || question.trim() === '') {
       return res.status(400).json({ error: 'Invalid or missing question.' });
     }
 
-    const lowerQ = question.toLowerCase();
-    const lastSuggestedBrands = extractLastSuggestedBrands(history);
+    // --- System Prompt: Include data and instructions for the AI ---
+    const systemPrompt = `You are a helpful assistant specializing in pet care and products available in Lebanon.
+If the question is not related to pets or pet products, answer "I can only assist you in pet related questions".
+If the question is about pet products or where to buy them, use the following data about products and stores in Lebanon to formulate your answer.
+Present the information clearly, mentioning the brand and the stores where it's available.
+If you don't know the answer based on the provided data or general pet knowledge, say "I don't know".
 
-    // Simple classification logic
-    const isFoodQuery = /(what.*feed|what.*food|can i feed|should i feed|recommend.*food|suggest.*food)/i.test(lowerQ);
-    const isWhereFollowUp = /(where.*(buy|find|get|available|store)|which.*store)/i.test(lowerQ);
+Available Pet Products in Lebanon:
+${JSON.stringify(LEBANON_PET_PRODUCTS, null, 2)}
+`;
+    // --- End System Prompt ---
 
-    const mentionedCat = /cat/i.test(lowerQ);
-    const mentionedDog = /dog/i.test(lowerQ);
-    let category = null;
 
-    if (mentionedCat) category = 'cat';
-    else if (mentionedDog) category = 'dog';
+    // Construct the messages array for the OpenAI API
+    // Start with the system prompt, then add the history, then the current user question
+    let messages = [{ role: "system", content: systemPrompt }];
 
-    if (isFoodQuery && category) {
-      const foodList = LEBANON_PET_PRODUCTS[category];
-      const productDetails = foodList.map(p => {
-        const storeList = p.stores.map(s =>
-          `- ${s.name} (${s.online ? "Online store available" : "No online store"})`
-        ).join('\n');
-
-        return `**${p.brand}**:\nAvailable at:\n${storeList}`;
-      }).join('\n\n');
-
-      return res.json({ answer: `Here are some recommended ${category} food products:\n\n${productDetails}` });
+    // Add previous conversation history if provided and valid
+    if (history && Array.isArray(history)) {
+        // Basic validation for history items
+        const validHistory = history.filter(
+            item => (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string'
+        );
+        messages = messages.concat(validHistory);
     }
 
-    if (isWhereFollowUp && lastSuggestedBrands.length > 0) {
-      let results = [];
+    // Add the current user question
+    messages.push({ role: "user", content: question });
 
-      for (const category of Object.values(LEBANON_PET_PRODUCTS)) {
-        for (const product of category) {
-          if (lastSuggestedBrands.includes(product.brand)) {
-            const storeList = product.stores.map(store =>
-              `- ${store.name} (${store.online ? "Online store available" : "No online store"})`
-            ).join('\n');
-            results.push(`**${product.brand}** is available at:\n${storeList}`);
-          }
-        }
-      }
+    // Optional: Log messages for debugging
+    // console.log("Messages sent to OpenAI:", JSON.stringify(messages, null, 2));
 
-      return res.json({ answer: results.join('\n\n') });
-    }
-
-    // Fallback to OpenAI
+    // --- Call OpenAI API with the full conversation history ---
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: history.concat({ role: 'user', content: question }),
+        model: "gpt-3.5-turbo", // Or a newer model if available and desired
+        messages: messages, // Send the full conversation history
+        max_tokens: 250, // Increased max_tokens to allow for longer responses and history
+        temperature: 0.7, // Adjust temperature for creativity (0.7 is standard)
     });
+    // --- End OpenAI API Call ---
 
-    const aiMessage = completion.choices[0].message.content;
-    res.json({ answer: aiMessage });
+    const answer = completion.choices[0].message.content.trim();
+    res.json({ answer });
+
   } catch (error) {
     console.error("Error in /gpt/ask:", error);
-    res.status(500).json({ error: "Something went wrong processing your question." });
+    let errorMessage = "Something went wrong processing your question.";
+
+    // Improved error handling based on OpenAI API errors
+    if (error instanceof OpenAI.APIError) {
+        errorMessage = error.message || "OpenAI API Error";
+        if (error.response && error.response.data && error.response.data.error) {
+            errorMessage = error.response.data.error.message;
+        } else if (error.status) {
+             errorMessage = `OpenAI API Error (Status: ${error.status}): ${error.message}`;
+        }
+    } else if (error.message) {
+        errorMessage = error.message;
+    }
+
+    // Use error.status if available, otherwise default to 500
+    res.status(error.status || 500).json({ error: errorMessage });
   }
 });
 
 module.exports = router;
+
 
