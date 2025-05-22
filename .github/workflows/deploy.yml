@@ -1,19 +1,14 @@
 # .github/workflows/deploy.yml
-# Workflow to test the backend code and deploy it to EC2 via Docker and ECR.
 name: Backend Test and Deploy
 
 on:
-  # Trigger the workflow on pushes to the main branch
   push:
     branches: [main]
-    # Only run if changes are in the backend directory or the workflow file itself
     paths:
       - 'backend/**'
       - '.github/workflows/deploy.yml'
-  # Allow manual triggering of the workflow
   workflow_dispatch:
 
-# Define environment variables for the workflow
 env:
   ECR_REGISTRY: 257394484725.dkr.ecr.eu-north-1.amazonaws.com
   ECR_REPOSITORY: pet-ai-backend
@@ -22,60 +17,53 @@ env:
 
 jobs:
   # --- TEST JOB ---
-  # Job to run unit tests for the backend
   test:
     name: Run Unit Tests
     runs-on: ubuntu-latest
     defaults:
       run:
-        # Set the working directory to the backend folder
         working-directory: ./backend
     steps:
-      # Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up the specified Node.js version
       - name: Set up Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          # --- REMOVE CACHING OPTIONS ---
+          # cache: 'yarn'
+          # cache-dependency-path: backend/yarn.lock
+          # --- END REMOVE ---
 
-      # Enable Corepack to manage package managers (like Yarn)
+      # Enable Corepack 
       - name: Enable Corepack
         run: corepack enable
 
-      # Install backend dependencies using Yarn via Corepack
-      # Use 'corepack yarn' to ensure the version from package.json is used
       - name: Install Dependencies using Corepack
+        # Use 'corepack yarn' to ensure the version from package.json is used
         run: corepack yarn install --frozen-lockfile
 
-      # Run the backend unit tests using Yarn via Corepack
-      # Use 'corepack yarn' to ensure the version from package.json is used
       - name: Run Tests using Corepack
+        # Use 'corepack yarn' to ensure the version from package.json is used
         run: corepack yarn test
         env:
           CI: true
           NODE_ENV: test
 
   # --- DEPLOY JOB  ---
-  # Job to build the Docker image and deploy it to EC2
   build-deploy:
     name: Build and Deploy Backend
     runs-on: ubuntu-latest
-    # This job depends on the 'test' job completing successfully
     needs: test
-    # Only run this job if the push is to the main branch
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       id-token: write
     steps:
-      # Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Configure AWS credentials using OIDC for secure access
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -83,14 +71,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Log in to the Amazon Elastic Container Registry (ECR)
       - name: Login to Amazon ECR
         id: login-ecr
         run: |
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $ECR_REGISTRY
 
-      # Build the Docker image for the backend and push it to ECR
       - name: Build and push Docker image
         id: build-image
         run: |
@@ -99,7 +85,6 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      # Deploy the new Docker image to the EC2 instance via SSH
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
@@ -109,15 +94,12 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           envs: ECR_REGISTRY, ECR_REPOSITORY, AWS_REGION
           script: |
-            # Exit immediately if a command exits with a non-zero status
             set -e
 
             # --- ECR Login and Image Pull ---
             echo "Checking for AWS CLI..."
-            # Check if AWS CLI is installed, install if not (using yum for Amazon Linux/RHEL-based)
-            if ! command -v aws > /dev/null; then echo "AWS CLI not found. Installing..."; sudo yum update -y && sudo yum install -y awscli; echo "AWS CLI installed."; fi
+            if ! command -v aws &> /dev/null; then echo "AWS CLI not found. Installing..."; sudo yum update -y && sudo yum install -y awscli; echo "AWS CLI installed."; fi
             echo "Logging into Amazon ECR via script..."
-            # Log in to ECR on the EC2 instance to pull the image
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
             echo "ECR login successful via script."
 
@@ -125,21 +107,17 @@ jobs:
             CONTAINER_NAME="backend-container"
 
             echo "Pulling latest image: $IMAGE_NAME"
-            # Pull the latest Docker image from ECR
             docker pull $IMAGE_NAME
             echo "Image pulled successfully."
 
             echo "Stopping existing container if it exists: $CONTAINER_NAME"
-            # Stop the currently running container, ignore errors if it's not running
             docker stop $CONTAINER_NAME || echo "Container '$CONTAINER_NAME' not running or failed to stop."
 
             echo "Removing existing container if it exists: $CONTAINER_NAME"
-            # Remove the stopped container, ignore errors if it doesn't exist
             docker rm $CONTAINER_NAME || echo "Container '$CONTAINER_NAME' not found or failed to remove."
 
             # --- Export Secrets ---
             echo "Exporting secrets to shell environment variables..."
-            # Export necessary environment variables from GitHub secrets/envs for the container
             export NODE_ENV="production"
             export AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}"
@@ -154,20 +132,15 @@ jobs:
 
             # --- Run container ---
             echo "Running new container: $CONTAINER_NAME"
-            # Run the new Docker container in detached mode (-d)
             docker run -d \
               --name $CONTAINER_NAME \
-              # Configure health check for the container
               --health-cmd="curl -sSf http://localhost:3001/health || exit 1" \
               --health-interval=30s \
               --health-retries=3 \
               --health-start-period=30s \
               --health-timeout=10s \
-              # Restart policy: restart unless explicitly stopped
               --restart=unless-stopped \
-              # Map port 3001 on the host to port 3001 in the container
               -p 3001:3001 \
-              # Pass environment variables to the container
               -e NODE_ENV="$NODE_ENV" \
               -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
               -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
@@ -183,7 +156,5 @@ jobs:
 
             # --- Prune images ---
             echo "Pruning dangling Docker images..."
-            # Remove unused Docker images to free up disk space
             docker image prune -f
             echo "Image pruning complete."
-
