@@ -7,31 +7,38 @@ import { useNavigate, useParams } from 'react-router-dom';
 import styles from './EditPet.module.css'; // Ensure this path is correct
 import { FaCat, FaDog } from 'react-icons/fa';
 
+// EditPet component for updating existing pet details.
 function EditPet() {
+    // Effect hook to set the document title when the component mounts.
     useEffect(() => {
         document.title = "MISHTIKA - Edit Pet";
     }, []);
 
+    // State variables for pet form inputs.
     const [name, setName] = useState('');
     const [ageYears, setAgeYears] = useState('');
     const [ageMonths, setAgeMonths] = useState('');
     const [weight, setWeight] = useState('');
     const [species, setSpecies] = useState('');
-    const [breed, setBreed] = useState(''); // This will hold the actual breed name (standard or custom)
+    const [breed, setBreed] = useState(''); // Holds the actual breed name.
     const [medicalInfo, setMedicalInfo] = useState('');
     const [gender, setGender] = useState('');
     const [error, setError] = useState('');
 
+    // State to manage the 'Other' breed text input visibility.
     const [isOtherBreed, setIsOtherBreed] = useState(false);
 
+    // State for handling picture updates.
+    const [currentPictureUrl, setCurrentPictureUrl] = useState(''); // Displays current or new preview.
+    const [newPictureFile, setNewPictureFile] = useState(null);   // Holds the new file object to upload.
 
-    const [currentPictureUrl, setCurrentPictureUrl] = useState(''); // To display current or new preview
-    const [newPictureFile, setNewPictureFile] = useState(null);   // To hold the new file object
-
+    // Hooks for navigation and accessing URL parameters.
     const navigate = useNavigate();
-    const { petId } = useParams();
+    const { petId } = useParams(); // Gets the pet ID from the URL.
+    // Retrieves the authentication token from local storage.
     const token = localStorage.getItem('token');
 
+    // Lists of standard dog and cat breeds.
     const dogBreeds = [
         "Labrador Retriever", "German Shepherd", "Golden Retriever", "French Bulldog",
         "Bulldog", "Poodle", "Beagle", "Rottweiler", "Yorkshire Terrier", "Dachshund",
@@ -48,14 +55,17 @@ function EditPet() {
         "Siberian", "Cornish Rex", "Other"
     ];
 
+    // Effect hook to fetch the existing pet data when the component mounts or petId/token changes.
     useEffect(() => {
         const fetchPet = async () => {
-            if (!petId || !token) return;
+            if (!petId || !token) return; // Ensure ID and token exist before fetching.
             try {
+                // API call to get the specific pet's data by ID.
                 const response = await axios.get(`https://mishtika.duckdns.org/pets/${petId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const petData = response.data;
+                // Populate state variables with fetched data.
                 setName(petData.name || '');
                 setAgeYears(petData.ageYears !== undefined ? String(petData.ageYears) : '');
                 setAgeMonths(petData.ageMonths !== undefined ? String(petData.ageMonths) : '');
@@ -63,16 +73,17 @@ function EditPet() {
                 setSpecies(petData.species || '');
                 setGender(petData.gender || '');
                 setMedicalInfo(petData.medicalInfo || '');
+                // Set the current picture URL if available.
                 setCurrentPictureUrl(petData.pictures && petData.pictures.length > 0 ? petData.pictures[0] : '');
 
-                // Breed handling
+                // Handle setting the breed and determining if it's a custom 'Other' breed.
                 const fetchedBreed = petData.breed || '';
                 const knownBreedsList = petData.species === 'Dog' ? dogBreeds : catBreeds;
-                // Check if the fetched breed is NOT in the standard list (excluding "Other" itself)
+                // Check if the fetched breed is NOT in the standard list (excluding "Other" itself).
                 const isFetchedBreedCustom = fetchedBreed && !knownBreedsList.slice(0, -1).includes(fetchedBreed);
 
-                setBreed(fetchedBreed); // Store the actual breed name
-                setIsOtherBreed(isFetchedBreedCustom); // Set true if it's a custom breed
+                setBreed(fetchedBreed); // Store the actual breed name.
+                setIsOtherBreed(isFetchedBreedCustom); // Set true if it's a custom breed.
 
             } catch (error) {
                 console.error('Error fetching pet:', error.response?.data || error.message);
@@ -81,27 +92,29 @@ function EditPet() {
         };
 
         fetchPet();
-    }, [petId, token]); // species is not needed here as it's set from petData
+    }, [petId, token]); // Re-run effect if petId or token changes.
 
+    // Handler for when a new picture file is selected.
     const handleNewPictureChange = (e) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            setNewPictureFile(file);
-            // Display a preview of the new image
+            setNewPictureFile(file); // Store the file object.
+            // Display a preview of the newly selected image.
             const reader = new FileReader();
             reader.onloadend = () => {
-                setCurrentPictureUrl(reader.result); // Show new image preview
+                setCurrentPictureUrl(reader.result); // Update the preview URL.
             };
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(file); // Read the file as a data URL for preview.
         } else {
             setNewPictureFile(null);
-
+            // Optionally reset preview to original or empty if file is cleared.
         }
     };
 
+    // Handler for submitting the pet update form.
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
+        setError(''); // Clear previous errors.
 
         // --- Client-side Validations ---
         if (!name.trim()) { setError('Pet name is required.'); return; }
@@ -114,75 +127,86 @@ function EditPet() {
         if (isNaN(numWeight) || numWeight <= 0 || numWeight > 200) { setError('Valid weight (0.1-200 kg) is required.'); return; }
         if (!gender) { setError('Please select a gender.'); return; }
         if (!species) { setError('Please select a species.'); return; }
-        if (!breed.trim()) { setError('Breed is required.'); return; } // `breed` will hold custom or standard
+        if (!breed.trim()) { setError('Breed is required.'); return; } // `breed` holds custom or standard name.
         // --- End Validations ---
 
         try {
+            // Create FormData object to send multipart data (including file).
             const formData = new FormData();
             formData.append('name', name.trim());
-            formData.append('ageYears', String(numAgeYears));
+            formData.append('ageYears', String(numAgeYears)); // Convert numbers back to strings for FormData.
             formData.append('ageMonths', String(numAgeMonths));
             formData.append('weight', String(numWeight));
             formData.append('species', species);
             formData.append('gender', gender);
-            formData.append('breed', breed.trim()); // Send the actual breed name
+            formData.append('breed', breed.trim()); // Send the actual breed name.
             formData.append('medicalInfo', medicalInfo.trim());
 
+            // Append the new picture file if one was selected.
             if (newPictureFile) {
-                formData.append('picture', newPictureFile); // Key 'picture' must match backend
+                // The key 'picture' MUST match the field name used in multer on the backend (upload.single('picture')).
+                formData.append('picture', newPictureFile);
             }
 
-            await axios.put(`https://mishtika.duckdns.org/pets/${petId}`, formData, {
+            // API call to update the pet using PUT request with FormData.
+            const response = await axios.put(`https://mishtika.duckdns.org/pets/${petId}`, formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
-                    // 'Content-Type': 'multipart/form-data' // Axios sets this automatically for FormData
+                    // 'Content-Type': 'multipart/form-data' // Axios sets this automatically for FormData.
                 },
             });
 
-            console.log('Pet updated successfully');
-            navigate('/petprofile'); // Or wherever you want to redirect
+            console.log('Pet updated successfully', response.data);
+            navigate('/petprofile'); // Redirect after successful update.
         } catch (err) {
             console.error('Error updating pet:', err.response?.data || err.message);
+            // Handle and display error messages from backend validation or API calls.
             let errorMsg = 'An error occurred while updating the pet.';
             if (err.response?.data?.message) {
                 errorMsg = err.response.data.message;
-            } else if (err.response?.data?.details) { // For validation errors from backend
+            } else if (err.response?.data?.details) { // For Mongoose validation errors from backend.
                 const details = err.response.data.details;
                 errorMsg = Object.values(details).map(detail => detail.message).join(' ');
+            } else if (err.message) { // Handle network or other errors.
+                errorMsg = err.message;
             }
             setError(errorMsg);
         }
     };
 
+    // Handler for species selection buttons.
     const handleSpeciesClick = (selectedSpecies) => {
-        if (species !== selectedSpecies) {
+        if (species !== selectedSpecies) { // Only update if species is changing.
             setSpecies(selectedSpecies);
-            setBreed(''); // Reset breed when species changes
-            setIsOtherBreed(false);
+            setBreed(''); // Reset breed when species changes.
+            setIsOtherBreed(false); // Reset 'Other' breed state.
         }
     };
 
-    // Handles changes from the Breed <Form.Select>
+    // Handler for changes in the standard Breed <Form.Select> dropdown.
     const handleBreedDropdownChange = (e) => {
         const selectedValue = e.target.value;
         if (selectedValue === 'Other') {
             setIsOtherBreed(true);
-            setBreed(''); // Clear breed text, user will type in the "Specify Breed" input
+            setBreed(''); // Clear breed state, user will type in the "Specify Breed" input.
         } else {
             setIsOtherBreed(false);
-            setBreed(selectedValue); // Set breed to the selected standard breed
+            setBreed(selectedValue); // Set breed to the selected standard breed name.
         }
     };
 
-    // Handles changes from the "Specify Breed" text input
+    // Handler for changes in the "Specify Breed" text input (when 'Other' is selected).
     const handleOtherBreedTextChange = (e) => {
-        setBreed(e.target.value); // Update breed with custom text
+        setBreed(e.target.value); // Update breed state with the custom text.
     };
 
+    // Handler for gender radio button changes.
     const handleGenderChange = (e) => { setGender(e.target.value); };
 
+    // Determines the correct list of standard breeds based on the selected species.
     const currentBreedList = species === 'Dog' ? dogBreeds : catBreeds;
 
+    // Renders the pet editing form.
     return (
         <Container className={`${styles.editPetContainer} mt-5`}>
             <h1 className={styles.editPetTitle}>Edit Pet</h1>
@@ -201,12 +225,13 @@ function EditPet() {
                     <Form.Control
                         className={styles.formControl}
                         type="file"
-                        name="picture"
+                        name="picture" // Name attribute MUST match multer field name ('picture').
                         onChange={handleNewPictureChange}
-                        accept="image/jpeg, image/png, image/gif, image/webp"
+                        accept="image/jpeg, image/png, image/gif, image/webp" // Specify accepted file types.
                     />
                 </Form.Group>
 
+                {/* Form fields for pet details */}
                 <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Name</Form.Label>
                     <Form.Control className={styles.formControl} type="text" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -224,6 +249,7 @@ function EditPet() {
                     <Form.Control className={styles.formControl} type="number" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} required min="0.1" max="200" />
                 </Form.Group>
 
+                {/* Gender Selection */}
                 <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Gender</Form.Label>
                     <div>
@@ -232,6 +258,7 @@ function EditPet() {
                     </div>
                 </Form.Group>
 
+                {/* Species Selection Buttons */}
                  <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Species</Form.Label>
                     <div className={styles.speciesSelection}>
@@ -244,12 +271,14 @@ function EditPet() {
                     </div>
                 </Form.Group>
 
+                {/* Breed Selection Dropdown (Conditional based on Species) */}
                 {species && (
                     <Form.Group className="mb-3">
                         <Form.Label className={styles.formLabel}>Breed</Form.Label>
                         <Form.Select
                             className={styles.formControl}
-                            value={isOtherBreed ? 'Other' : breed} // Correctly reflects state
+                            // Value reflects whether 'Other' is selected or the actual breed name.
+                            value={isOtherBreed ? 'Other' : breed}
                             onChange={handleBreedDropdownChange}
                             required
                         >
@@ -261,6 +290,7 @@ function EditPet() {
                     </Form.Group>
                 )}
 
+                {/* "Specify Breed" Text Input (Conditional if 'Other' is selected) */}
                 {isOtherBreed && species && (
                     <Form.Group className="mb-3">
                         <Form.Label className={styles.formLabel}>Specify Breed</Form.Label>
@@ -268,18 +298,20 @@ function EditPet() {
                             className={styles.formControl}
                             type="text"
                             placeholder="Enter breed name"
-                            value={breed} // Shows the custom breed text from state
+                            value={breed} // Value is the custom breed text from state.
                             onChange={handleOtherBreedTextChange}
                             required
                         />
                     </Form.Group>
                 )}
 
+                {/* Medical Info Textarea */}
                 <Form.Group className="mb-3">
                     <Form.Label className={styles.formLabel}>Medical Information (Optional)</Form.Label>
                     <Form.Control className={styles.formControl} as="textarea" rows={3} value={medicalInfo} onChange={(e) => setMedicalInfo(e.target.value)} />
                 </Form.Group>
 
+                {/* Submit Button */}
                 <Button className={styles.editPetButton} variant="primary" type="submit">
                     Save Changes
                 </Button>

@@ -5,27 +5,36 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import styles from './AdminSettings.module.css';
 
+// AdminSettings component for managing admin user profile and password.
 function AdminSettings() {
+    // Effect hook to set the document title when the component mounts.
     useEffect(() => {
         document.title = "MISHTIKA - Admin Settings";
     }, []);
 
+    // State variables for password change form.
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    // State variables for profile change form.
     const [name, setName] = useState('');
     const [age, setAge] = useState('');
+    // State for displaying error and success messages.
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    // Retrieves the authentication token from local storage.
     const token = localStorage.getItem('token');
 
+    // Effect hook to fetch admin user data when the component mounts or token changes.
     useEffect(() => {
         const fetchUserData = async () => {
             try {
+                // API call to get the current admin user's profile data.
                 const response = await axios.get('https://mishtika.duckdns.org/admin/user', { // Use /admin/user
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 const userData = response.data;
+                // Set state with fetched user data.
                 setName(userData.username);
                 setAge(userData.age);
             } catch (err) {
@@ -37,19 +46,22 @@ function AdminSettings() {
         };
 
         fetchUserData();
-    }, [token]);
+    }, [token]); // Dependency array includes token.
 
+    // Handler function for submitting the password change form.
     const handlePasswordChange = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
 
+        // Client-side validation: Check if new passwords match.
         if (newPassword !== confirmNewPassword) {
             setError('New passwords do not match.');
             setTimeout(() => setError(''), 5000); // Clear error after 5 seconds
             return;
         }
 
+        // Client-side validation: Check new password complexity using regex.
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#+-])[A-Za-z\d@$!%*?&#+-]{8,}$/;
         if (!passwordRegex.test(newPassword)) {
             setError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character, and be at least 8 characters long.');
@@ -58,11 +70,13 @@ function AdminSettings() {
         }
 
         try {
+            // API call to update the admin's password.
             await axios.put(
                 'https://mishtika.duckdns.org/admin/settings/password',
                 { currentPassword, newPassword },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            // Display success message and clear password fields on success.
             setSuccess('Password updated successfully.');
             setCurrentPassword('');
             setNewPassword('');
@@ -74,11 +88,13 @@ function AdminSettings() {
         }
     };
 
+    // Handler function for submitting the profile change form.
     const handleProfileChange = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
 
+        // Client-side validation: Check age range.
         if (age < 13 || age > 120) {
             setError('Age must be between 13 and 120.');
             setTimeout(() => setError(''), 5000); // Clear error after 5 seconds
@@ -86,11 +102,13 @@ function AdminSettings() {
         }
 
         try {
+            // API call to update the admin's profile (username and age).
             await axios.put(
                 'https://mishtika.duckdns.org/admin/settings/profile',
                 { username: name, age },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            // Display success message on success.
             setSuccess('Profile updated successfully.');
         } catch (err) {
             console.error('Error updating profile:', err);
@@ -99,12 +117,15 @@ function AdminSettings() {
         }
     };
 
+    // Renders the admin settings form with sections for password and profile changes.
     return (
         <Container className={styles.settingsContainer}>
             <h1 className={styles.settingsTitle}>Admin Settings</h1>
+            {/* Display error or success messages */}
             {error && <div className={`alert alert-danger`}>{error}</div>}
             {success && <div className={`alert alert-success`}>{success}</div>}
 
+            {/* Form for changing password */}
             <Form className={styles.settingsSection} onSubmit={handlePasswordChange}>
                 <h2 className={styles.settingsSectionTitle}>Change Password</h2>
                 <Form.Group className="mb-3 form-group">
@@ -124,6 +145,7 @@ function AdminSettings() {
                 </Button>
             </Form>
 
+            {/* Form for changing profile information */}
             <Form className={styles.settingsSection} onSubmit={handleProfileChange}>
                 <h2 className={styles.settingsSectionTitle}>Change Profile</h2>
                 <Form.Group className="mb-3 form-group">

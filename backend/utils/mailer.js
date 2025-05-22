@@ -1,9 +1,10 @@
-// c:\Users\Anas\M5\pet-ai-project\backend\utils\mailer.js
+// Utility module for sending emails using Nodemailer.
 const nodemailer = require('nodemailer');
-const config = require('../config/config'); // Reads from config.js which reads env vars
-const moment = require('moment-timezone'); // <-- Use moment-timezone
+const config = require('../config/config'); // Loads application configuration, including email credentials.
+const moment = require('moment-timezone'); // Used for formatting dates/times in specific timezones.
 
-// Validate essential email configuration during startup
+// Validate essential email configuration during application startup.
+// If EMAIL_USER or EMAIL_PASS is missing, a warning is logged, and email functionality will be disabled.
 if (!config.EMAIL_USER || !config.EMAIL_PASS) {
     console.warn("---------------------------------------------------------------------");
     console.warn("WARNING: Email configuration (EMAIL_USER, EMAIL_PASS) is missing.");
@@ -11,19 +12,22 @@ if (!config.EMAIL_USER || !config.EMAIL_PASS) {
     console.warn("---------------------------------------------------------------------");
 }
 
-
-
+// Initialize the Nodemailer transporter.
+// The transporter is responsible for the actual sending of emails.
 let transporter;
 if (config.EMAIL_USER && config.EMAIL_PASS) {
+    // Create a transporter object using Gmail as the service.
+    // Authentication uses credentials from the application's configuration.
     transporter = nodemailer.createTransport({
-        service: 'gmail', // email service provider
+        service: 'gmail', // Specifies Gmail as the email service provider.
         auth: {
-            user: config.EMAIL_USER, //  Gmail address from config/env
-            pass: config.EMAIL_PASS, // Your Gmail app-specific password from config/env
+            user: config.EMAIL_USER, // Gmail address from config (environment variable).
+            pass: config.EMAIL_PASS, // Gmail app-specific password from config (environment variable).
         },
     });
 
-    // Verify connection configuration on startup (optional but good)
+    // Verify the transporter connection configuration on startup, except in test environments.
+    // This helps to catch configuration issues early.
     if (process.env.NODE_ENV !== 'test') {
         transporter.verify(function(error, success) {
           if (error) {
@@ -33,55 +37,58 @@ if (config.EMAIL_USER && config.EMAIL_PASS) {
           }
         });
     } else {
-        console.log('Skipping Nodemailer verification in test environment.'); // Optional log
-
+        // Log that verification is skipped in test environments.
+        console.log('Skipping Nodemailer verification in test environment.');
     }
 } else {
-    transporter = null; // Set transporter to null if config is missing
+    // If email credentials are not configured, set the transporter to null.
+    // Email sending functions will check for this and avoid attempting to send.
+    transporter = null;
 }
 
-
 /**
- * Generic function to send an email.
- * @param {object} mailOptions - Nodemailer mail options object (to, subject, text, html, etc.)
- * @param {string} mailOptions.to - Recipient email address.
- * @param {string} mailOptions.subject - Email subject line.
- * @param {string} [mailOptions.text] - Plain text body.
- * @param {string} [mailOptions.html] - HTML body.
+ * Generic function to send an email using the configured transporter.
+ * @param {object} mailOptions - Nodemailer mail options object.
+ * @param {string} mailOptions.to - Recipient's email address.
+ * @param {string} mailOptions.subject - Subject line of the email.
+ * @param {string} [mailOptions.text] - Plain text body of the email.
+ * @param {string} [mailOptions.html] - HTML body of the email.
  */
 const sendEmail = async (mailOptions) => {
+    // If the transporter is not configured (e.g., missing credentials), log an error and do not attempt to send.
     if (!transporter) {
         console.error(`Cannot send email ("${mailOptions.subject}" to ${mailOptions.to}): Email transporter is not configured.`);
-        
-        return; // Exit silently if not configured
+        return; // Exit if transporter is not configured.
     }
 
-    // Set a default sender address
+    // Set a default sender address and name for all outgoing emails.
     const optionsWithDefaults = {
         ...mailOptions,
-        from: `"MISHTIKA" <${config.EMAIL_USER}>`, // Add a sender name
+        from: `"MISHTIKA" <${config.EMAIL_USER}>`, // Sender name and email address.
     };
 
     try {
+        // Attempt to send the email using the transporter.
         let info = await transporter.sendMail(optionsWithDefaults);
         console.log(`Email sent successfully ("${optionsWithDefaults.subject}" to ${optionsWithDefaults.to}): ${info.messageId}`);
-        return info; // Return info on success
+        return info; // Return information about the sent email (e.g., messageId).
     } catch (error) {
+        // Log any errors that occur during email sending and re-throw the error.
         console.error(`Failed to send email ("${optionsWithDefaults.subject}" to ${optionsWithDefaults.to}):`, error);
-        throw error; // Re-throw the error to be handled by the caller if needed
+        throw error; // Re-throw to allow the caller to handle the error if necessary.
     }
 };
 
-
 /**
- * Sends a password reset email.
- * @param {string} toEmail - Recipient email address.
- * @param {string} resetToken - The unique password reset token.
+ * Sends a password reset email to the specified user.
+ * @param {string} toEmail - The recipient's email address.
+ * @param {string} resetToken - The unique token for resetting the password.
  */
 const sendPasswordResetEmail = async (toEmail, resetToken) => {
-    // Construct the reset link using the deployed frontend URL
+    // Construct the password reset link using the frontend's URL structure.
     const resetLink = `http://mishtika-frontend.s3-website.eu-north-1.amazonaws.com/reset-password/${resetToken}`;
 
+    // Define the email options, including recipient, subject, and HTML/text content.
     const mailOptions = {
         to: toEmail,
         subject: 'MISHTIKA Password Reset Request',
@@ -92,42 +99,41 @@ const sendPasswordResetEmail = async (toEmail, resetToken) => {
         text: `You requested a password reset for your MISHTIKA account.\n\nReset your password here (link expires in 1 hour): ${resetLink}\n\nIf you did not request this, please ignore this email.`
     };
 
-    await sendEmail(mailOptions); // Use the generic sendEmail function
+    // Use the generic sendEmail function to dispatch the password reset email.
+    await sendEmail(mailOptions);
 };
 
-
 /**
- * Sends a schedule reminder email.
- * @param {string} toEmail - Recipient email address.
+ * Sends a reminder email for a scheduled event.
+ * @param {string} toEmail - The recipient's email address.
  * @param {string} eventTitle - The title of the scheduled event.
- * @param {Date} eventStartTime - The start time of the event occurrence (as UTC Date object).
+ * @param {Date} eventStartTime - The start time of the event occurrence (expected as a UTC Date object).
  */
 const sendReminderEmail = async (toEmail, eventTitle, eventStartTime) => {
-    // ---  Format time using the correct timezone ---
-    const reminderTimezone = "Asia/Beirut"; // Define the target timezone
-    // Convert the UTC Date object to the target timezone before formatting
+    // Define the target timezone for displaying the event time.
+    const reminderTimezone = "Asia/Beirut";
+    // Convert the UTC event start time to the target timezone and format it.
     const formattedStartTime = moment(eventStartTime).tz(reminderTimezone).format('h:mm a on dddd, MMMM Do YYYY');
-    // --- END  ---
 
+    // Define the email options, including recipient, subject, and HTML/text content with the formatted time.
     const mailOptions = {
         to: toEmail,
         subject: `Reminder: ${eventTitle}`,
-        // ---  Use the correctly formatted time ---
         html: `<p>This is a reminder for your scheduled event:</p>
                <p><b>${eventTitle}</b></p>
                <p>Starting around: ${formattedStartTime}</p>
                <p>Have a great day!</p>`,
         text: `Reminder for your scheduled event: ${eventTitle}\nStarting around: ${formattedStartTime}\n\nHave a great day!`
-        // --- END  ---
     };
 
-    await sendEmail(mailOptions); // Use the generic sendEmail function
+    // Use the generic sendEmail function to dispatch the reminder email.
+    await sendEmail(mailOptions);
 };
 
-
-// Export the specific functions needed elsewhere
+// Export the specific email sending functions for use in other parts of the application.
 module.exports = {
     sendPasswordResetEmail,
     sendReminderEmail,
-    
 };
+
+

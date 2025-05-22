@@ -1,8 +1,10 @@
-/* index.css */
+/* index.css - Global stylesheet for the application */
+/* Imports Google Fonts: Oswald for headings and Roboto for body text. */
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap');
 
+/* Defines global CSS custom properties (variables) for theming. */
 :root {
-    /* Color Palette (Option 1: Earthy and Calm) */
+    /* Color Palette: Defines the primary, secondary, accent, text, and status colors. */
     --primary-color: #5F9EA0; /* Cadet Blue */
     --secondary-color: #F5F5DC; /* Beige */
     --accent-color-1: #A0522D; /* Sienna */
@@ -14,11 +16,11 @@
     --warning-color: #ffc107; /* Yellow */
     --info-color: #17a2b8; /* Light Blue */
 
-    /* Typography */
+    /* Typography: Defines font families for headings and body text. */
     --heading-font: 'Oswald', sans-serif;
     --body-font: 'Roboto', sans-serif;
 
-    /* Spacing */
+    /* Spacing: Defines standard padding and margin sizes. */
     --padding-small: 0.5rem;
     --padding-medium: 1rem;
     --padding-large: 1.5rem;
@@ -26,32 +28,35 @@
     --margin-medium: 1rem;
     --margin-large: 1.5rem;
 
-    /* Border Radius */
+    /* Border Radius: Defines standard border radius sizes for rounded corners. */
     --border-radius-small: 0.25rem;
     --border-radius-medium: 0.5rem;
     --border-radius-large: 1rem;
 }
 
+/* Base styles for the body element. */
 body {
-    margin: 0;
-    font-family: var(--body-font);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    color: var(--text-color);
-    background-color: var(--background-color);
+    margin: 0; /* Removes default browser margin. */
+    font-family: var(--body-font); /* Sets the default font for the application. */
+    -webkit-font-smoothing: antialiased; /* Improves font rendering on WebKit browsers. */
+    -moz-osx-font-smoothing: grayscale; /* Improves font rendering on Firefox. */
+    color: var(--text-color); /* Sets the default text color. */
+    background-color: var(--background-color); /* Sets the default background color. */
 }
 
+/* Base styles for heading elements (h1-h6). */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-    font-family: var(--heading-font);
-    font-weight: 700;
-    color: var(--primary-color);
+    font-family: var(--heading-font); /* Sets the font for headings. */
+    font-weight: 700; /* Sets the default font weight for headings. */
+    color: var(--primary-color); /* Sets the default color for headings. */
 }
 
+/* Specific font sizes for heading levels. */
 h1 {
     font-size: 2.5rem;
 }
@@ -64,7 +69,7 @@ h3 {
     font-size: 1.75rem;
 }
 
-/* Buttons */
+/* Global styles for primary buttons. */
 .btn-primary {
     background-color: var(--accent-color-1);
     border-color: var(--accent-color-1);
@@ -78,6 +83,7 @@ h3 {
     border-color: #804022;
 }
 
+/* Global styles for danger buttons. */
 .btn-danger {
     background-color: var(--danger-color);
     border-color: var(--danger-color);
@@ -91,6 +97,7 @@ h3 {
     border-color: #b32a38;
 }
 
+/* Global styles for success buttons. */
 .btn-success {
     background-color: var(--success-color);
     border-color: var(--success-color);
@@ -104,6 +111,7 @@ h3 {
     border-color: #218838;
 }
 
+/* Global styles for warning buttons. */
 .btn-warning {
     background-color: var(--warning-color);
     border-color: var(--warning-color);
@@ -117,6 +125,7 @@ h3 {
     border-color: #e0a800;
 }
 
+/* Global styles for info buttons. */
 .btn-info {
     background-color: var(--info-color);
     border-color: var(--info-color);
@@ -130,27 +139,30 @@ h3 {
     border-color: #138496;
 }
 
-/* Forms */
+/* Global styles for form control elements (inputs, textareas, selects). */
 .form-control {
     border-color: var(--primary-color);
     border-radius: var(--border-radius-small);
     padding: var(--padding-small);
 }
 
+/* Global styles for form labels. */
 .form-label {
     font-weight: 700;
     color: var(--text-color);
 }
 
-/* Alerts */
+/* Global styles for danger alerts. */
 .alert-danger {
     background-color: #f8d7da;
     border-color: #f5c6cb;
     color: #721c24;
 }
 
+/* Global styles for success alerts. */
 .alert-success {
     background-color: #d4edda;
     border-color: #c3e6cb;
     color: #155724;
 }
+

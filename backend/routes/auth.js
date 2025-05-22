@@ -4,156 +4,193 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const PasswordResetToken = require('../models/PasswordResetToken');
 const RecentActivity = require('../models/RecentActivity');
-const crypto = require('crypto');
-const config = require('../config/config');
+const crypto =require('crypto');
+// config is not directly used here as jwtSecret and mailer already import it.
+// const config = require('../config/config');
 const jwtSecret = require('../config/jwtSecret');
-const adminMiddleware = require('../middleware/adminMiddleware');
+// adminMiddleware is imported but not used in this file.
+// const adminMiddleware = require('../middleware/adminMiddleware');
 const userMiddleware = require('../middleware/userMiddleware');
 const { sendPasswordResetEmail } = require('../utils/mailer');
 
 const router = express.Router();
 
-// Nodemailer transporter setup
-
-
-// Signup route
+// Route for user registration.
+// POST /auth/signup
 router.post('/signup', async (req, res) => {
     try {
         const { email, password, username, age } = req.body;
 
-        // Validate input
+        // Basic input validation.
         if (!email || !password || !username || !age) {
             return res.status(400).json({ message: 'All fields are required' });
         }
 
-        // Check if user already exists
+        // Check if a user with the given email already exists.
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Create new user
+        // Create a new user instance. Password hashing is handled by the User model's pre-save hook.
         const newUser = new User({ email, password, username, age, role: 'user' });
         await newUser.save();
 
-        // Add recent activity
+        // Log the user signup activity.
         await RecentActivity.create({
             type: 'user_signup',
             details: `New user signed up: ${newUser.email}`,
             userId: newUser._id,
         });
 
-        res.status(201).json({ message: 'User created successfully', user: newUser });
+        // Exclude password from the response.
+        const userResponse = newUser.toObject();
+        delete userResponse.password;
+
+        res.status(201).json({ message: 'User created successfully', user: userResponse });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        // Handle potential Mongoose validation errors (e.g., invalid email, password complexity).
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(e => e.message);
+            return res.status(400).json({ message: 'Validation failed', errors: messages });
+        }
+        console.error("Error during signup:", error);
+        res.status(500).json({ message: 'Server error during signup' });
     }
 });
 
-// Login route
+// Route for user login.
+// POST /auth/login
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log("Login attempt for email:", email);
-        // Validate input
+        // Validate input.
         if (!email || !password) {
             return res.status(400).json({ message: 'Email and password are required' });
         }
 
-        // Find the user
+        // Find the user by email.
         const user = await User.findOne({ email });
-        console.log("User found:", user);
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        // Check password
-        console.log("Entered password:", password);
+        // Compare the provided password with the stored hashed password.
         const isMatch = await bcrypt.compare(password, user.password);
-        console.log("Password match:", isMatch);
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
+        // Check if the user account is active.
         if (!user.isActive) {
-            console.log(`Login denied for inactive user: ${email}`); // Optional: Log this attempt
-            // Return a specific status code (e.g., 403 Forbidden) and message
             return res.status(403).json({ message: 'Your account is inactive. Please contact support.' });
         }
-        // Generate JWT
+        // Generate a JSON Web Token (JWT) for the authenticated user.
         const token = jwt.sign({ id: user._id, role: user.role }, jwtSecret.secret, { expiresIn: '1h' });
 
-        res.json({ token, message: 'Logged in successfully', role: user.role, isActive: user.isActive }); // send back the role
+        // Send the token, role, and active status in the response.
+        res.json({ token, message: 'Logged in successfully', role: user.role, isActive: user.isActive });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error("Error during login:", error);
+        res.status(500).json({ message: 'Server error during login' });
     }
 });
 
-// Get user by ID
+// Route to get the details of the currently authenticated user.
+// GET /auth/user
+// Protected by userMiddleware to ensure the user is authenticated and has 'user' role.
 router.get('/user', userMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('-password');
+        // req.user.id is set by the userMiddleware after token verification.
+        const user = await User.findById(req.user.id).select('-password'); // Exclude password from response.
         if (!user) {
+            // This case should ideally not be reached if userMiddleware is working correctly.
             return res.status(404).json({ message: 'User not found' });
         }
         res.json(user);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error("Error fetching user data:", error);
+        res.status(500).json({ message: 'Server error fetching user data' });
     }
 });
-// Update user password
+
+// Route for a user to update their own password.
+// PUT /auth/settings/password
+// Protected by userMiddleware.
 router.put('/settings/password', userMiddleware, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         const user = await User.findById(req.user.id);
+
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
+
+        // Verify the current password.
         const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: 'Incorrect current password' });
         }
-        // Remove the validation and hashing here
+
+        // Set the new password. The User model's pre-save hook will handle hashing and validation.
         user.password = newPassword;
-        await user.save();
+        await user.save(); // This triggers the pre-save hook for hashing and schema validation.
+
         res.json({ message: 'Password updated successfully' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        // Handle Mongoose validation errors (e.g., new password doesn't meet complexity).
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(e => e.message);
+            return res.status(400).json({ message: 'Password validation failed', errors: messages });
+        }
+        console.error("Error updating user password:", error);
+        res.status(500).json({ message: 'Server error updating password' });
     }
 });
 
-// Update user profile
+// Route for a user to update their own profile information (username, age).
+// PUT /auth/settings/profile
+// Protected by userMiddleware.
 router.put('/settings/profile', userMiddleware, async (req, res) => {
     try {
         const { username, age } = req.body;
         const userId = req.user.id;
 
-        // Validate age on the backend
-        if (age < 13 || age > 120) {
-            return res.status(400).json({ message: 'Age must be between 13 and 120' });
+        // Validate age on the backend.
+        if (age !== undefined && (Number(age) < 13 || Number(age) > 120)) {
+            return res.status(400).json({ message: 'Age must be a number between 13 and 120' });
         }
 
+        const updateData = {};
+        if (username !== undefined) updateData.username = username;
+        if (age !== undefined) updateData.age = Number(age); // Ensure age is a number.
+
+        // Update the user document. 'runValidators: true' ensures schema validation for age.
+        // 'new: true' returns the updated document.
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            { $set: { username, age } }, // Use $set to update only these fields
-            { new: true, runValidators: false } // Return the updated document and disable validators
-        );
+            { $set: updateData },
+            { new: true, runValidators: true } // Enable schema validation for updates.
+        ).select('-password'); // Exclude password from the response.
 
         if (!updatedUser) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        res.json({ message: 'Profile updated successfully' });
+        res.json({ message: 'Profile updated successfully', user: updatedUser });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        // Handle Mongoose validation errors.
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(e => e.message);
+            return res.status(400).json({ message: 'Profile validation failed', errors: messages });
+        }
+        console.error("Error updating user profile:", error);
+        res.status(500).json({ message: 'Server error updating profile' });
     }
 });
-// Forgot Password Route
 
+// Route to initiate the password reset process.
+// POST /auth/forgot-password
 router.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
@@ -162,65 +199,71 @@ router.post('/forgot-password', async (req, res) => {
         }
         const user = await User.findOne({ email });
 
+        // If user not found, send a generic success message to prevent email enumeration.
         if (!user) {
-            // Still return 200 to prevent email enumeration
-            console.log(`Forgot password attempt for non-existent email: ${email}`);
             return res.status(200).json({ message: 'If an account with that email exists, a password reset email has been sent.' });
         }
 
-        // Generate and save reset token
+        // Generate a secure random token for password reset.
         const token = crypto.randomBytes(20).toString('hex');
+        // Create and save the password reset token, linking it to the user.
         const passwordResetToken = new PasswordResetToken({
             userId: user._id,
             token,
         });
         await passwordResetToken.save();
 
-        // --- Use the imported mailer function ---
+        // Send the password reset email containing the token.
         await sendPasswordResetEmail(user.email, token);
-        // --- End Use mailer function ---
 
         res.status(200).json({ message: 'If an account with that email exists, a password reset email has been sent.' });
     } catch (error) {
         console.error('Error in forgot password:', error);
-        // Check if the error came from the mailer (if mailer throws errors)
-        // Or just send a generic error
         res.status(500).json({ message: 'Internal server error processing request.' });
     }
 });
 
-// Reset Password Route
+// Route to reset the password using a valid token.
+// POST /auth/reset-password/:token
 router.post('/reset-password/:token', async (req, res) => {
     try {
         const { token } = req.params;
         const { password } = req.body;
 
+        // Find the password reset token.
         const passwordResetToken = await PasswordResetToken.findOne({ token });
 
         if (!passwordResetToken) {
             return res.status(400).json({ message: 'Invalid or expired token' });
         }
 
+        // Find the user associated with the token.
         const user = await User.findById(passwordResetToken.userId);
-
         if (!user) {
+            // This case might indicate an orphaned token or a deleted user.
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Remove the hashing here
+        // Set the new password. The User model's pre-save hook will handle hashing and validation.
         user.password = password;
-        await user.save();
+        await user.save(); // This triggers the pre-save hook for hashing and schema validation.
 
-        // Delete the token
+        // Delete the used password reset token.
         await PasswordResetToken.deleteOne({ token });
 
         res.status(200).json({ message: 'Password reset successfully' });
     } catch (error) {
+        // Handle Mongoose validation errors (e.g., new password doesn't meet complexity).
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(e => e.message);
+            return res.status(400).json({ message: 'Password validation failed', errors: messages });
+        }
         console.error('Error in reset password:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
 
 module.exports = router;
+
 
 

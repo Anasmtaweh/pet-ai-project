@@ -6,24 +6,34 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import styles from './AdminUserManagement.module.css';
 
+// AdminUserManagement component for displaying and managing users.
 function AdminUserManagement() {
+    // Effect hook to set the document title when the component mounts.
     useEffect(() => {
         document.title = "MISHTIKA - User Management";
     }, []);
 
+    // State for storing the list of users.
     const [users, setUsers] = useState([]);
+    // State for controlling the visibility of the delete confirmation modal.
     const [showModal, setShowModal] = useState(false);
+    // State for storing the ID of the user to be deleted.
     const [userToDelete, setUserToDelete] = useState(null);
+    // State for storing error messages.
     const [error, setError] = useState('');
+    // Retrieves the authentication token from local storage.
     const token = localStorage.getItem('token');
 
+    // Effect hook to fetch users when the component mounts or the token changes.
     useEffect(() => {
+        // Function to fetch users from the backend.
         const fetchUsers = async () => {
             try {
+                // API call to get all users for admin view.
                 const response = await axios.get('https://mishtika.duckdns.org/admin/users', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                setUsers(response.data);
+                setUsers(response.data); // Update state with fetched users.
             } catch (err) {
                 console.error('Error fetching users:', err);
                 setError(err.response?.data?.message || 'An error occurred while fetching users.');
@@ -31,42 +41,48 @@ function AdminUserManagement() {
         };
 
         fetchUsers();
-    }, [token]);
+    }, [token]); // Dependency array includes token to re-fetch if token changes.
 
+    // Function to show the delete confirmation modal.
     const handleShowModal = (userId) => {
-        setUserToDelete(userId);
-        setShowModal(true);
+        setUserToDelete(userId); // Set the ID of the user to be deleted.
+        setShowModal(true);    // Show the modal.
     };
 
+    // Function to close the delete confirmation modal.
     const handleCloseModal = () => {
-        setShowModal(false);
-        setUserToDelete(null);
+        setShowModal(false);   // Hide the modal.
+        setUserToDelete(null); // Clear the user to delete ID.
     };
 
+    // Function to handle the deletion of a user.
     const handleDeleteUser = async () => {
         try {
+            // API call to delete the selected user.
             await axios.delete(`https://mishtika.duckdns.org/admin/users/${userToDelete}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
+            // Update local state by filtering out the deleted user.
             setUsers(users.filter((user) => user._id !== userToDelete));
-            handleCloseModal();
+            handleCloseModal(); // Close the modal after successful deletion.
         } catch (err) {
             console.error('Error deleting user:', err);
             setError(err.response?.data?.message || 'An error occurred while deleting user.');
         }
     };
 
-    // ---  FUNCTION ---
-    const handleSetStatus = async (userId, desiredStatus) => { // Accepts the desired boolean status
+    // Function to handle setting the active/inactive status of a user.
+    const handleSetStatus = async (userId, desiredStatus) => { // Accepts the user ID and the desired boolean status.
         try {
-            // Send the DESIRED state directly to the backend
+            // API call to update the user's status.
+            // Sends the desired status directly to the backend.
             await axios.put(`https://mishtika.duckdns.org/admin/users/${userId}`,
-                { isActive: desiredStatus }, // Send the desired status
+                { isActive: desiredStatus }, // Payload includes the desired status.
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
             );
-            // Update local state to reflect the change
+            // Update local state to reflect the change immediately.
             setUsers(users.map((user) =>
                 user._id === userId ? { ...user, isActive: desiredStatus } : user
             ));
@@ -75,8 +91,8 @@ function AdminUserManagement() {
             setError(err.response?.data?.message || 'An error occurred while setting user status.');
         }
     };
-    // --- END  ---
 
+    // Renders the user management table, action buttons, and delete confirmation modal.
     return (
         <Container className={styles.userManagementContainer}>
             <h2 className={styles.userManagementTitle}>User Management</h2>
@@ -103,39 +119,37 @@ function AdminUserManagement() {
                                     Delete
                                 </Button>
 
-                                {/* ---  onClick handlers --- */}
+                                {/* Conditional rendering for Activate/Deactivate button based on user's current status. */}
                                 {user.isActive ? (
-                                    // If user is Active, show Deactivate button
+                                    // If user is Active, show Deactivate button.
                                     <Button
                                         variant={'warning'}
                                         size='sm'
                                         className={`${styles.actionButton} ms-2`}
-                                        // Pass desired state: false
+                                        // Calls handleSetStatus to set isActive to false.
                                         onClick={() => handleSetStatus(user._id, false)}
                                     >
                                         Deactivate
                                     </Button>
                                 ) : (
-                                    // If user is Inactive, show Activate button
+                                    // If user is Inactive, show Activate button.
                                     <Button
                                         variant={'success'}
                                         size='sm'
                                         className={`${styles.actionButton} ms-2`}
-                                        // Pass desired state: true
+                                        // Calls handleSetStatus to set isActive to true.
                                         onClick={() => handleSetStatus(user._id, true)}
                                     >
                                         Activate
                                     </Button>
                                 )}
-                                {/* --- END  --- */}
-
                             </td>
                         </tr>
                     ))}
                 </tbody>
             </Table>
 
-            {/* --- Modal  --- */}
+            {/* Modal for confirming user deletion. */}
             <Modal show={showModal} onHide={handleCloseModal}>
                 <Modal.Header closeButton>
                     <Modal.Title>Confirm Delete</Modal.Title>
@@ -155,3 +169,4 @@ function AdminUserManagement() {
 }
 
 export default AdminUserManagement;
+

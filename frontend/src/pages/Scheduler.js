@@ -1,151 +1,147 @@
-// src/pages/Scheduler.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
-import moment from 'moment'; // Ensure moment is installed
-import 'react-big-calendar/lib/css/react-big-calendar.css';
+import moment from 'moment'; // For date and time manipulation.
+import 'react-big-calendar/lib/css/react-big-calendar.css'; // Styles for the calendar component.
 import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import Alert from 'react-bootstrap/Alert';
-import styles from './Scheduler.module.css';
-import axios from 'axios';
+import styles from './Scheduler.module.css'; // Component-specific styles.
+import axios from 'axios'; // For making HTTP requests to the backend.
 
-// --- Helper to calculate the wide data window ---
+// Helper function to calculate the data fetching window around a center date.
 const calculateDataWindow = (centerDate) => {
-    const daysBuffer = 45; // Fetch data for +/- 45 days around the center date
+    const daysBuffer = 45; // Fetch data for +/- 45 days.
     return {
         start: moment(centerDate).subtract(daysBuffer, 'days').startOf('day').toDate(),
         end: moment(centerDate).add(daysBuffer, 'days').endOf('day').toDate(),
     };
 };
-// --- End Helper ---
 
+// Initializes the localizer for react-big-calendar using moment.
 const localizer = momentLocalizer(moment);
 
-// --- REVISED generateOccurrences (Checks exceptions) ---
+// Generates individual event occurrences from a schedule rule within a given window, handling exceptions.
 const generateOccurrences = (rule, windowStart, windowEnd) => {
     const occurrences = [];
+    // Basic validation for the rule object.
     if (!rule || !rule.start || !rule.end || !rule._id) {
-        // console.warn("Skipping occurrence generation for invalid/incomplete rule:", rule);
         return occurrences;
     }
 
-    // Prepare exception dates for quick lookup (convert to valueOf for reliable comparison)
+    // Prepare exception dates for quick lookup (timestamps for reliable comparison).
     const exceptionTimestamps = new Set(
         (rule.exceptionDates || []).map(date => moment(date).valueOf())
     );
 
+    // Convert rule's start/end dates and times to moment objects for easier manipulation.
     const ruleStartDate = moment(rule.start).startOf('day');
     const ruleEndDate = moment(rule.end).startOf('day');
     const ruleStartTime = moment(rule.start);
     const ruleEndTime = moment(rule.end);
 
+    // Validate rule dates and times.
     if (!ruleStartDate.isValid() || !ruleEndDate.isValid() || ruleEndDate.isBefore(ruleStartDate)) {
-        // console.warn(`Skipping rule "${rule.title}" (${rule._id}) due to invalid date range.`);
         return occurrences;
     }
     if (!ruleStartTime.isValid() || !ruleEndTime.isValid()) {
-        //  console.warn(`Skipping rule "${rule.title}" (${rule._id}) due to invalid time.`);
          return occurrences;
     }
 
-    // Calculate daily duration correctly, handling overnight events
+    // Calculate the duration of a single event occurrence, handling overnight events.
     const tempStart = moment().set({ hour: ruleStartTime.hour(), minute: ruleStartTime.minute(), second: ruleStartTime.second(), millisecond: 0 });
     const tempEnd = moment().set({ hour: ruleEndTime.hour(), minute: ruleEndTime.minute(), second: ruleEndTime.second(), millisecond: 0 });
-    if (tempEnd.isSameOrBefore(tempStart)) { tempEnd.add(1, 'day'); } // Adjust if end time is on the next day
+    if (tempEnd.isSameOrBefore(tempStart)) { tempEnd.add(1, 'day'); }
     const dailyDuration = moment.duration(tempEnd.diff(tempStart));
 
-    // Determine loop start date (max of rule start or window start)
+    // Determine the iteration start and end dates based on the rule and window.
     let current = ruleStartDate.clone();
     if (current.isBefore(windowStart)) { current = windowStart.clone().startOf('day'); }
-
-    // Determine loop end date (min of rule end or window end)
     const loopEndDate = moment.min(windowEnd, ruleEndDate);
 
-    // Loop through days in the relevant range
+    // Loop through each day in the relevant range to generate occurrences.
     while (current.isSameOrBefore(loopEndDate)) {
         let occursOnThisDay = false;
+        // Check if the event occurs on the current day based on repetition rules.
         if (rule.repeat) {
             if (rule.repeatType === 'daily') {
                 occursOnThisDay = true;
             } else if (rule.repeatType === 'weekly' && Array.isArray(rule.repeatDays) && rule.repeatDays.includes(current.format('dddd'))) {
                 occursOnThisDay = true;
             }
-        } else {
-            // For non-repeating events, only occurs on the rule's start date
+        } else { // For non-repeating events.
             if (current.isSame(ruleStartDate, 'day')) {
                 occursOnThisDay = true;
             }
         }
 
         if (occursOnThisDay) {
-            // Calculate the specific start and end time for this day's occurrence
+            // Calculate the specific start and end time for this day's occurrence.
             const occurrenceStart = current.clone().set({ hour: ruleStartTime.hour(), minute: ruleStartTime.minute(), second: ruleStartTime.second() });
             const occurrenceEnd = occurrenceStart.clone().add(dailyDuration);
 
-            // Check against exceptions using valueOf for reliable comparison
+            // Add the occurrence if it's not an exception.
             if (!exceptionTimestamps.has(occurrenceStart.valueOf())) {
                 occurrences.push({
                     title: rule.title,
                     type: rule.type,
-                    originalRuleId: rule._id, // Keep original rule ID
+                    originalRuleId: rule._id, // Store the ID of the base rule.
                     start: occurrenceStart.toDate(),
                     end: occurrenceEnd.toDate(),
-                    // Pass necessary rule properties for eventPropGetter or display
                     repeat: rule.repeat,
                     repeatType: rule.repeatType,
                     repeatDays: rule.repeatDays,
                 });
-            } else {
-                 // console.log(`Skipping excepted occurrence for rule ${rule._id} on ${occurrenceStart.format()}`);
             }
         }
-        current.add(1, 'day'); // Move to the next day
+        current.add(1, 'day'); // Move to the next day.
     }
     return occurrences;
 };
-// --- End REVISED generateOccurrences ---
 
-
+// Scheduler component for managing and displaying pet schedules.
 function Scheduler() {
+    // Effect hook to set the document title.
     useEffect(() => {
         document.title = "MISHTIKA - Scheduler";
     }, []);
 
-    // State
+    // State for storing the base schedule rules fetched from the backend.
     const [eventRules, setEventRules] = useState([]);
+    // State for storing the individual event occurrences generated for display on the calendar.
     const [displayEvents, setDisplayEvents] = useState([]);
-
-    // --- NEW: Separate state for calendar navigation date ---
-    const initialDate = new Date(); // Today's date
-    const [calendarDate, setCalendarDate] = useState(initialDate);
-    // --- END NEW ---
-
-    // --- : Initial view range based on initialDate and default view ---
-    const [currentViewRange, setCurrentViewRange] = useState(calculateDataWindow(initialDate));
-    // --- END  ---
-    const [showAddEditModal, setShowAddEditModal] = useState(false); // Modal for Add/Edit
-    const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false); // Modal for Delete Choice
-    const [selectedOccurrence, setSelectedOccurrence] = useState(null); // Specific calendar event clicked
-    const [editEventRule, setEditEventRule] = useState(null); // Rule being edited OR rule associated with delete action
-    const [newEvent, setNewEvent] = useState({ // State for the Add/Edit form
+    // State for the current date the calendar is focused on.
+    const [calendarDate, setCalendarDate] = useState(new Date());
+    // State for the current data fetching window (start and end dates).
+    const [currentViewRange, setCurrentViewRange] = useState(calculateDataWindow(new Date()));
+    // State for controlling the visibility of the Add/Edit event modal.
+    const [showAddEditModal, setShowAddEditModal] = useState(false);
+    // State for controlling the visibility of the Delete confirmation modal.
+    const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+    // State for the specific calendar event (occurrence) that was clicked.
+    const [selectedOccurrence, setSelectedOccurrence] = useState(null);
+    // State for the schedule rule being edited or associated with a delete action.
+    const [editEventRule, setEditEventRule] = useState(null);
+    // State for the form data when adding or editing an event rule.
+    const [newEvent, setNewEvent] = useState({
         title: '',
-        start: moment().startOf('hour').add(1, 'hour'), // Default start time
-        end: moment().startOf('hour').add(2, 'hour'),   // Default end time
+        start: moment().startOf('hour').add(1, 'hour'),
+        end: moment().startOf('hour').add(2, 'hour'),
         type: 'meal',
         repeat: false,
         repeatType: 'daily',
         repeatDays: [],
     });
-    const [modalError, setModalError] = useState(''); // Error for Add/Edit modal
-    const [deleteError, setDeleteError] = useState(''); // Error for Delete modal
+    // State for displaying errors within the Add/Edit modal.
+    const [modalError, setModalError] = useState('');
+    // State for displaying errors within the Delete confirmation modal.
+    const [deleteError, setDeleteError] = useState('');
 
-    // Constants and User Info
+    // Constants for days of the week and retrieving user information.
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const token = localStorage.getItem('token');
-    let owner = null;
+    let owner = null; // Owner ID extracted from the token.
     try {
         if (token) {
             const decodedToken = JSON.parse(atob(token.split('.')[1]));
@@ -153,57 +149,48 @@ function Scheduler() {
         }
     } catch (e) {
         console.error("Error decoding token:", e);
-        // Handle invalid token case if necessary (e.g., redirect to login)
     }
 
-    // --- Fetch original event rules ---
+    // Fetches the base event rules from the backend for the current user.
     const fetchEventRules = useCallback(async () => {
         if (!owner || !token) {
-            console.log("Cannot fetch rules: Owner ID or token missing.");
-            setEventRules([]); // Clear rules if not logged in
+            setEventRules([]);
             return;
         }
-        console.log("Fetching event rules...");
         try {
             const response = await axios.get(`https://mishtika.duckdns.org/schedules/owner/${owner}`, {
                  headers: { Authorization: `Bearer ${token}` }
             });
-            console.log("Fetched rules:", response.data);
-            setEventRules(response.data || []); // Ensure it's an array
+            setEventRules(response.data || []);
         } catch (error) {
             console.error('Error fetching event rules:', error);
-            setEventRules([]); // Set empty on error
+            setEventRules([]);
         }
     }, [owner, token]);
 
-    // Fetch rules on initial load or when owner/token changes
+    // Effect hook to fetch event rules on initial load or when owner/token changes.
     useEffect(() => {
         fetchEventRules();
     }, [fetchEventRules]);
 
-    // --- Generate display events whenever rules or view range change ---
+    // Effect hook to regenerate displayable calendar events when rules or the view range change.
     useEffect(() => {
-        console.log("Regenerating display events. Rules:", eventRules.length, "Range:", currentViewRange.start, currentViewRange.end);
         const generated = [];
         const windowStartMoment = moment(currentViewRange.start);
         const windowEndMoment = moment(currentViewRange.end);
 
         eventRules.forEach(rule => {
-            // Use the revised generateOccurrences function with the current view range
             const occurrences = generateOccurrences(rule, windowStartMoment, windowEndMoment);
             generated.push(...occurrences);
         });
-        console.log("Generated display events:", generated.length);
         setDisplayEvents(generated);
-    }, [eventRules, currentViewRange]); // Dependencies: run when rules or view range update
+    }, [eventRules, currentViewRange]);
 
-    // --- Modal Handling ---
-    // Add/Edit Modal
+    // Closes the Add/Edit modal and resets its state.
     const handleAddEditModalClose = () => {
         setShowAddEditModal(false);
         setEditEventRule(null);
         setModalError('');
-        // Reset form state to defaults
         setNewEvent({
             title: '',
             start: moment().startOf('hour').add(1, 'hour'),
@@ -215,12 +202,11 @@ function Scheduler() {
         });
     };
 
-    const handleAddEditModalShow = (ruleToEdit = null) => { // Default to null for adding
+    // Shows the Add/Edit modal, populating it with data if editing an existing rule.
+    const handleAddEditModalShow = (ruleToEdit = null) => {
         setModalError('');
-        if (!ruleToEdit) { // Adding new
-            console.log("Opening modal to add new rule.");
+        if (!ruleToEdit) { // Adding a new rule.
             setEditEventRule(null);
-            // Reset form state to defaults
             setNewEvent({
                 title: '',
                 start: moment().startOf('hour').add(1, 'hour'),
@@ -230,10 +216,8 @@ function Scheduler() {
                 repeatType: 'daily',
                 repeatDays: [],
             });
-        } else { // Editing existing rule
-            console.log("Opening modal to edit rule:", ruleToEdit);
+        } else { // Editing an existing rule.
             setEditEventRule(ruleToEdit);
-            // Populate form with rule data, ensuring moment objects for dates
             setNewEvent({
                 title: ruleToEdit.title || '',
                 start: ruleToEdit.start ? moment(ruleToEdit.start) : moment().startOf('hour').add(1, 'hour'),
@@ -247,260 +231,202 @@ function Scheduler() {
         setShowAddEditModal(true);
     };
 
-    // Delete Confirmation Modal
+    // Closes the Delete confirmation modal and resets related state.
     const handleDeleteConfirmModalClose = () => {
         setShowDeleteConfirmModal(false);
-        setSelectedOccurrence(null); // Clear selected occurrence
-        setEditEventRule(null); // Clear associated rule
+        setSelectedOccurrence(null);
+        setEditEventRule(null);
         setDeleteError('');
     };
 
+    // Shows the Delete confirmation modal, setting context for deleting an occurrence or a series.
     const handleDeleteConfirmModalShow = (eventOrRule) => {
         setDeleteError('');
-        const ruleId = eventOrRule.originalRuleId || eventOrRule._id; // Get ID from calendar event or rule list item
+        const ruleId = eventOrRule.originalRuleId || eventOrRule._id;
         const rule = eventRules.find(r => r._id === ruleId);
 
         if (!rule) {
-            console.error("Cannot show delete confirm: Rule not found for", eventOrRule);
-            setDeleteError("Cannot delete: Associated rule not found. It might have been deleted already.");
-            setShowDeleteConfirmModal(true); // Show modal with error
+            setDeleteError("Cannot delete: Associated rule not found.");
+            setShowDeleteConfirmModal(true);
             return;
         }
+        setEditEventRule(rule); // Store the rule for delete action.
 
-        setEditEventRule(rule); // Store the rule associated with the delete action
-
-        // Check if it's a specific occurrence clicked on the calendar
-        if (eventOrRule.originalRuleId && eventOrRule.start) {
-             console.log("Showing delete choice for occurrence:", eventOrRule);
-             setSelectedOccurrence(eventOrRule); // Store the specific occurrence details
-             setShowDeleteConfirmModal(true); // Show the choice modal
-        } else { // It's a rule from the list (or invalid event)
-             console.log("Showing delete choice for entire series (rule):", rule);
-             setSelectedOccurrence(null); // No specific occurrence
-             setShowDeleteConfirmModal(true); // Show the choice modal
+        if (eventOrRule.originalRuleId && eventOrRule.start) { // Clicked a specific calendar occurrence.
+             setSelectedOccurrence(eventOrRule);
+        } else { // Clicked delete on a rule from the list.
+             setSelectedOccurrence(null);
         }
+        setShowDeleteConfirmModal(true);
     };
-    // --- End Modal Handling ---
 
-
-    // --- Input change handlers ---
+    // Handles input changes in the Add/Edit modal form.
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setNewEvent(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setNewEvent(prev => ({ ...prev, [name]: value }));
     };
 
+    // Handles date/time input changes in the Add/Edit modal form.
     const handleDateChange = (e, field) => {
         const { value } = e.target;
-        // When changing datetime-local, parse it into a moment object
-        setNewEvent(prev => ({
-            ...prev,
-            [field]: moment(value) // Store as moment object
-        }));
+        setNewEvent(prev => ({ ...prev, [field]: moment(value) }));
     };
 
+    // Handles changes to repeat options (checkbox, type, days) in the Add/Edit modal.
     const handleRepeatChange = (e) => {
-        const { name, value, type, checked } = e.target;
+        const { name, value, checked } = e.target;
         if (name === 'repeat') {
-            // Handle the main repeat checkbox
             setNewEvent(prev => ({
                 ...prev,
                 repeat: checked,
-                // Reset dependent fields if repeat is turned off
                 repeatType: checked ? prev.repeatType : 'daily',
                 repeatDays: checked ? prev.repeatDays : []
             }));
         } else if (name === 'repeatType') {
-            // Handle the repeat type dropdown (daily/weekly)
             setNewEvent(prev => ({
                 ...prev,
                 repeatType: value,
-                // Reset days if switching away from weekly
                 repeatDays: value === 'weekly' ? prev.repeatDays : []
             }));
         } else if (name === 'repeatDays') {
-            // Handle the individual day checkboxes for weekly repeat
             const day = value;
             setNewEvent(prev => ({
                 ...prev,
-                repeatDays: checked
-                    ? [...prev.repeatDays, day] // Add day if checked
-                    : prev.repeatDays.filter(d => d !== day) // Remove day if unchecked
+                repeatDays: checked ? [...prev.repeatDays, day] : prev.repeatDays.filter(d => d !== day)
             }));
         }
     };
-    // --- End Input change handlers ---
 
-    // --- Validation Function ---
+    // Validates the event form data before submission.
     const validateEvent = () => {
-        setModalError(''); // Clear previous errors
-        if (!newEvent.title.trim()) {
-            setModalError('Title is required.');
-            return false;
-        }
-        if (!newEvent.start || !newEvent.start.isValid()) {
-            setModalError('Valid start date and time are required.');
-            return false;
-        }
-        if (!newEvent.end || !newEvent.end.isValid()) {
-            setModalError('Valid end date and time are required.');
-            return false;
-        }
-        // Check if end is after start (considering only time for repeating, full date/time otherwise)
-        if (newEvent.repeat) {
-            // For repeating, compare only time of day. Handle overnight.
+        setModalError('');
+        if (!newEvent.title.trim()) { setModalError('Title is required.'); return false; }
+        if (!newEvent.start || !newEvent.start.isValid()) { setModalError('Valid start date and time are required.'); return false; }
+        if (!newEvent.end || !newEvent.end.isValid()) { setModalError('Valid end date and time are required.'); return false; }
+
+        if (newEvent.repeat) { // Validation for repeating events.
             const startTime = moment().set({ hour: newEvent.start.hour(), minute: newEvent.start.minute() });
             const endTime = moment().set({ hour: newEvent.end.hour(), minute: newEvent.end.minute() });
             if (endTime.isSameOrBefore(startTime)) {
-                 // Allow overnight if end date is explicitly after start date (though UI might not support this well)
                  if (!newEvent.end.isAfter(newEvent.start, 'day')) {
-
                      const tempS = moment().set({ hour: newEvent.start.hour(), minute: newEvent.start.minute() });
                      const tempE = moment().set({ hour: newEvent.end.hour(), minute: newEvent.end.minute() });
                      if (tempE.isSameOrBefore(tempS)) {
-                         setModalError('For repeating events, end time must be after start time (overnight ranges not fully supported in this simple validation).');
-                         // return false; // Allow for now, rely on generation logic
+                         // This validation might be too strict for simple overnight time ranges if date part is not considered.
                      }
                  }
             }
-            // Check date range for repeating events
             if (newEvent.end.isBefore(newEvent.start, 'day')) {
                  setModalError('For repeating events, the end date cannot be before the start date.');
                  return false;
             }
-
-        } else {
-            // For non-repeating, end datetime must be strictly after start datetime
+        } else { // Validation for non-repeating events.
             if (newEvent.end.isSameOrBefore(newEvent.start)) {
                 setModalError('End date and time must be after start date and time.');
                 return false;
             }
         }
-
         if (newEvent.repeat && newEvent.repeatType === 'weekly' && newEvent.repeatDays.length === 0) {
             setModalError('Please select at least one day for weekly repeat.');
             return false;
         }
-        return true; // Validation passed
+        return true;
     };
-    // --- End Validation Function ---
 
-
-    // --- CRUD Operations ---
+    // Handles adding a new event rule to the backend.
     const handleAddEvent = async () => {
-        if (!validateEvent()) return; // Validate before sending
+        if (!validateEvent()) return;
         const payload = {
             title: newEvent.title.trim(),
-            // Send dates as ISO strings for backend consistency
             start: newEvent.start.toISOString(),
             end: newEvent.end.toISOString(),
             type: newEvent.type,
             repeat: newEvent.repeat,
-            // Only include repeat details if repeat is true
             ...(newEvent.repeat && { repeatType: newEvent.repeatType }),
             ...(newEvent.repeat && newEvent.repeatType === 'weekly' && { repeatDays: newEvent.repeatDays }),
-            owner // Add owner ID
+            owner
         };
-        console.log("Sending new schedule rule:", payload);
         try {
             await axios.post('https://mishtika.duckdns.org/schedules/add', payload, {
                  headers: { Authorization: `Bearer ${token}` }
             });
-            fetchEventRules(); // Refresh rules list
-            handleAddEditModalClose(); // Close Add/Edit modal
+            fetchEventRules();
+            handleAddEditModalClose();
         } catch (error) {
-            console.error('Error adding event rule:', error);
             setModalError(error.response?.data?.message || 'Failed to add event.');
         }
     };
 
+    // Handles editing an existing event rule in the backend.
     const handleEditEvent = async () => {
-        if (!validateEvent() || !editEventRule) { // Validate and ensure rule exists
+        if (!validateEvent() || !editEventRule) {
              if (!editEventRule) setModalError("Cannot save, no event rule is being edited.");
              return;
         }
         const payload = {
             title: newEvent.title.trim(),
-            // Send dates as ISO strings
             start: newEvent.start.toISOString(),
             end: newEvent.end.toISOString(),
             type: newEvent.type,
             repeat: newEvent.repeat,
-            // Only include repeat details if repeat is true
             ...(newEvent.repeat && { repeatType: newEvent.repeatType }),
             ...(newEvent.repeat && newEvent.repeatType === 'weekly' && { repeatDays: newEvent.repeatDays }),
         };
-        // Clean up payload based on repeat status (important for PUT)
         if (!newEvent.repeat) {
-            payload.repeatType = null; // Explicitly set to null or undefined if not repeating
+            payload.repeatType = null;
             payload.repeatDays = [];
         } else if (newEvent.repeatType !== 'weekly') {
             payload.repeatDays = [];
         }
-        console.log("Updating schedule rule:", editEventRule._id, payload);
         try {
             await axios.put(`https://mishtika.duckdns.org/schedules/${editEventRule._id}`, payload, {
                  headers: { Authorization: `Bearer ${token}` }
             });
-            fetchEventRules(); // Refresh rules list
-            handleAddEditModalClose(); // Close Add/Edit modal
+            fetchEventRules();
+            handleAddEditModalClose();
         } catch (error) {
-            console.error('Error updating event rule:', error);
             setModalError(error.response?.data?.message || 'Failed to update event.');
         }
     };
 
-    // Delete Handler for "Entire Series"
+    // Handles deleting an entire event series (rule) from the backend.
     const handleDeleteSeries = async () => {
         if (!editEventRule || !editEventRule._id) {
             setDeleteError("Cannot delete series: No rule selected."); return;
         }
-        setDeleteError(''); // Clear previous errors
-        console.log("Deleting entire series (rule):", editEventRule._id);
+        setDeleteError('');
         try {
             await axios.delete(`https://mishtika.duckdns.org/schedules/${editEventRule._id}`, {
                  headers: { Authorization: `Bearer ${token}` }
             });
-            fetchEventRules(); // Refresh rules from backend
-            handleDeleteConfirmModalClose(); // Close the confirmation modal
+            fetchEventRules();
+            handleDeleteConfirmModalClose();
         } catch (error) {
-            console.error('Error deleting event rule series:', error);
             setDeleteError(error.response?.data?.message || 'Failed to delete event series.');
-            // Keep modal open on error to show message
         }
     };
 
-    // Delete Handler for "Only This Occurrence"
+    // Handles deleting a single occurrence of a repeating event by adding an exception.
     const handleDeleteOccurrence = async () => {
-        // Ensure we have the occurrence details and the associated rule ID
         if (!selectedOccurrence || !selectedOccurrence.originalRuleId || !selectedOccurrence.start) {
              setDeleteError("Cannot delete occurrence: Invalid event data selected."); return;
         }
-        setDeleteError(''); // Clear previous errors
+        setDeleteError('');
         const ruleId = selectedOccurrence.originalRuleId;
-        const occurrenceDate = selectedOccurrence.start; // The specific start time of the clicked event
-
-        console.log(`Adding exception for rule ${ruleId} on ${moment(occurrenceDate).format()}`);
+        const occurrenceDate = selectedOccurrence.start;
         try {
-            // Call the new backend endpoint
             await axios.post(`https://mishtika.duckdns.org/schedules/${ruleId}/exception`,
-                { occurrenceDate: moment(occurrenceDate).toISOString() }, // Send date as ISO string
+                { occurrenceDate: moment(occurrenceDate).toISOString() },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            fetchEventRules(); // Refresh rules to get updated exceptions array
-            handleDeleteConfirmModalClose(); // Close the confirmation modal
+            fetchEventRules();
+            handleDeleteConfirmModalClose();
         } catch (error) {
-             console.error('Error adding exception for occurrence:', error);
              setDeleteError(error.response?.data?.message || 'Failed to delete this occurrence.');
-             // Keep modal open on error to show message
         }
     };
-    // --- End CRUD ---
 
-
-    // --- eventPropGetter ---
+    // Provides custom styling for calendar events based on their type.
     const eventPropGetter = (event) => {
         let className = '';
         switch (event.type) {
@@ -513,47 +439,31 @@ function Scheduler() {
         }
         return { className };
     };
-    // --- End eventPropGetter ---
 
-    // --- handleSelectEvent (Calendar Click) ---
+    // Handles clicks on events within the calendar, showing the delete confirmation modal.
     const handleSelectEvent = (event) => {
-        console.log("Event selected on calendar:", event);
-        // Show the delete confirmation modal instead of the edit modal
         handleDeleteConfirmModalShow(event);
     };
-    // --- End handleSelectEvent ---
 
-    // --- Handle Calendar View/Range Change ---
+    // Handles calendar navigation (e.g., changing month/week). Updates the data fetching window.
     const handleNavigate = (newDate, view) => {
-        console.log("Navigate:", newDate, view);
-        setCalendarDate(newDate); // Update the calendar's focus date
-
-
-        const newStart = moment(newDate).startOf('month').toDate(); // Fetch +/- 1 month around navigated date
-        const newEnd = moment(newDate).endOf('month').toDate();
-
+        setCalendarDate(newDate);
         setCurrentViewRange(calculateDataWindow(newDate));
     };
 
+    // Handles calendar view changes (e.g., month, week, day). Updates the data fetching window.
     const handleView = (view) => {
-        console.log("View Change:", view);
- 
-    
-        setCurrentViewRange(calculateDataWindow(calendarDate)); // Use the wide window calculation
-    
+        setCurrentViewRange(calculateDataWindow(calendarDate));
     };
 
-    // --- End Handle Calendar View/Range Change ---
-
-
-    // --- Render ---
+    // Renders the Scheduler UI, including the calendar, event rule list, and modals.
     return (
         <Container className={`${styles.schedulerContainer} mt-5`}>
             <h1 className={styles.schedulerTitle}>Scheduler</h1>
-            {/* Button opens Add/Edit Modal */}
             <Button variant="primary" onClick={() => handleAddEditModalShow(null)} className={styles.addEventButton}>
                 Add Event Rule
             </Button>
+            {/* Calendar component for displaying events */}
             <div className={styles.calendarContainer}>
                 <Calendar
                     localizer={localizer}
@@ -568,14 +478,12 @@ function Scheduler() {
                     popup
                     onNavigate={handleNavigate}
                     onView={handleView}
-                    date={calendarDate} // Set the calendar's focus date
-                    // --- ADD THIS PROP ---
-                    length={30} // Show 30 days in Agenda view
-                    // --- END ADD ---
+                    date={calendarDate}
+                    length={30} // Shows 30 days in Agenda view.
                 />
             </div>
 
-            {/* Event List shows the base rules */}
+            {/* List of base event rules */}
             <h2 className={styles.eventListTitle}>Event Rules</h2>
             <ul className={styles.eventList}>
                 {eventRules.length > 0 ? eventRules.map((rule) => (
@@ -588,16 +496,14 @@ function Scheduler() {
                             Time: {moment(rule.start).format('h:mm a')} - {moment(rule.end).format('h:mm a')}
                         </span>
                         <div className={styles.eventButtons}>
-                            {/* Edit button opens Add/Edit Modal */}
                             <Button variant="primary" size="sm" onClick={() => handleAddEditModalShow(rule)}>Edit Rule</Button>
-                            {/* Delete button opens Delete Confirm Modal */}
                             <Button variant="danger" size="sm" className="ms-2" onClick={() => handleDeleteConfirmModalShow(rule)}>Delete</Button>
                         </div>
                     </li>
                 )) : <li>No event rules found. Add one using the button above.</li>}
             </ul>
 
-            {/* --- Add/Edit Modal --- */}
+            {/* Modal for adding or editing an event rule */}
             <Modal show={showAddEditModal} onHide={handleAddEditModalClose}>
                 <Modal.Header closeButton>
                     <Modal.Title>{editEventRule ? 'Edit Event Rule' : 'Add New Event Rule'}</Modal.Title>
@@ -605,19 +511,10 @@ function Scheduler() {
                 <Modal.Body>
                     {modalError && <Alert variant="danger">{modalError}</Alert>}
                     <Form>
-                        {/* Title */}
                         <Form.Group className="mb-3" controlId="formEventTitle">
                             <Form.Label>Title</Form.Label>
-                            <Form.Control
-                                type="text"
-                                name="title"
-                                id="formEventTitle"
-                                value={newEvent.title}
-                                onChange={handleInputChange}
-                                required
-                            />
+                            <Form.Control type="text" name="title" id="formEventTitle" value={newEvent.title} onChange={handleInputChange} required />
                         </Form.Group>
-                        {/* Type */}
                         <Form.Group className="mb-3" controlId="formEventType">
                             <Form.Label>Type</Form.Label>
                             <Form.Select name="type" id="formEventType" value={newEvent.type} onChange={handleInputChange}>
@@ -628,48 +525,20 @@ function Scheduler() {
                                 <option value="medication">Medication</option>
                             </Form.Select>
                         </Form.Group>
-                        {/* Start Date/Time */}
                         <Form.Group className="mb-3" controlId="formEventStart">
                             <Form.Label>Start Date & Time</Form.Label>
-                            <Form.Control
-                                type="datetime-local"
-                                name="start"
-                                id="formEventStart"
-                                value={newEvent.start.format('YYYY-MM-DDTHH:mm')} // Format for input
-                                onChange={(e) => handleDateChange(e, 'start')}
-                                required
-                            />
+                            <Form.Control type="datetime-local" name="start" id="formEventStart" value={newEvent.start.format('YYYY-MM-DDTHH:mm')} onChange={(e) => handleDateChange(e, 'start')} required />
                         </Form.Group>
-                        {/* End Date/Time */}
                         <Form.Group className="mb-3" controlId="formEventEnd">
                             <Form.Label>End Date & Time</Form.Label>
-                            <Form.Control
-                                type="datetime-local"
-                                name="end"
-                                id="formEventEnd"
-                                value={newEvent.end.format('YYYY-MM-DDTHH:mm')} // Format for input
-                                onChange={(e) => handleDateChange(e, 'end')}
-                                required
-                            />
-                            <Form.Text muted>
-                                For repeating events, the date part defines the range, and the time part defines the daily duration.
-                            </Form.Text>
+                            <Form.Control type="datetime-local" name="end" id="formEventEnd" value={newEvent.end.format('YYYY-MM-DDTHH:mm')} onChange={(e) => handleDateChange(e, 'end')} required />
+                            <Form.Text muted>For repeating events, the date part defines the range, and the time part defines the daily duration.</Form.Text>
                         </Form.Group>
-                        {/* Repeat Checkbox */}
                         <Form.Group className="mb-3" controlId="formEventRepeat">
-                            <Form.Check
-                                type="checkbox"
-                                name="repeat"
-                                id="formEventRepeat"
-                                label="Repeat this event within the date range"
-                                checked={newEvent.repeat}
-                                onChange={handleRepeatChange}
-                            />
+                            <Form.Check type="checkbox" name="repeat" id="formEventRepeat" label="Repeat this event within the date range" checked={newEvent.repeat} onChange={handleRepeatChange} />
                         </Form.Group>
-                        {/* Conditional Repeat Options */}
                         {newEvent.repeat && (
                             <>
-                                {/* Repeat Type */}
                                 <Form.Group className="mb-3" controlId="formEventRepeatType">
                                     <Form.Label>Repeat Type</Form.Label>
                                     <Form.Select name="repeatType" id="formEventRepeatType" value={newEvent.repeatType} onChange={handleRepeatChange}>
@@ -677,23 +546,12 @@ function Scheduler() {
                                         <option value="weekly">Specific days of the week</option>
                                     </Form.Select>
                                 </Form.Group>
-                                {/* Repeat Days (only if weekly) */}
                                 {newEvent.repeatType === 'weekly' && (
                                     <Form.Group className="mb-3">
                                         <Form.Label>Days of the Week</Form.Label>
                                         <div>
                                             {daysOfWeek.map((day) => (
-                                                <Form.Check
-                                                    key={day}
-                                                    inline
-                                                    type="checkbox"
-                                                    name="repeatDays"
-                                                    value={day}
-                                                    label={day}
-                                                    id={`formEventRepeatDay-${day}`} // Unique ID for each checkbox
-                                                    checked={newEvent.repeatDays.includes(day)}
-                                                    onChange={handleRepeatChange}
-                                                />
+                                                <Form.Check key={day} inline type="checkbox" name="repeatDays" value={day} label={day} id={`formEventRepeatDay-${day}`} checked={newEvent.repeatDays.includes(day)} onChange={handleRepeatChange} />
                                             ))}
                                         </div>
                                     </Form.Group>
@@ -710,7 +568,7 @@ function Scheduler() {
                 </Modal.Footer>
             </Modal>
 
-            {/* --- Delete Confirmation Modal --- */}
+            {/* Modal for confirming deletion of an event occurrence or series */}
             <Modal show={showDeleteConfirmModal} onHide={handleDeleteConfirmModalClose} centered>
                 <Modal.Header closeButton>
                     <Modal.Title>Confirm Delete</Modal.Title>
@@ -718,24 +576,21 @@ function Scheduler() {
                 <Modal.Body>
                     {deleteError && <Alert variant="danger">{deleteError}</Alert>}
                     {selectedOccurrence ? (
-                        // Message when clicking a specific occurrence on the calendar
                         <>
                             <p>Choose delete option for the event:</p>
                             <p><strong>"{editEventRule?.title}"</strong> on <strong>{moment(selectedOccurrence.start).format('MMM Do YYYY, h:mm a')}</strong>?</p>
                         </>
                     ) : (
-                        // Message when clicking delete on a rule from the list
                         <p>Are you sure you want to delete the entire series for <strong>"{editEventRule?.title}"</strong>?</p>
                     )}
                 </Modal.Body>
-                <Modal.Footer className="justify-content-between"> {/* Layout buttons */}
-                    <div> {/* Group occurrence/series delete buttons */}
-                        {selectedOccurrence && editEventRule?.repeat && ( // Only show if it's a repeating event occurrence
+                <Modal.Footer className="justify-content-between">
+                    <div>
+                        {selectedOccurrence && editEventRule?.repeat && (
                             <Button variant="warning" onClick={handleDeleteOccurrence} className="me-2">
                                 Delete Only This Occurrence
                             </Button>
                         )}
-                        {/* Always show "Delete Series" */}
                         <Button variant="danger" onClick={handleDeleteSeries}>
                             Delete Entire Series
                         </Button>
@@ -745,10 +600,9 @@ function Scheduler() {
                     </Button>
                 </Modal.Footer>
             </Modal>
-            {/* --- End Delete Confirmation Modal --- */}
-
         </Container>
     );
 }
 
 export default Scheduler;
+

@@ -1,15 +1,26 @@
-# .dockerignore (backend/.dockerignore)
-# Allow Yarn config and lockfile
+# .dockerignore
+# Specifies files and directories to ignore when building the Docker image.
+
+# Include Yarn configuration file.
 !.yarnrc.yml
+# Include Yarn lock file for dependency installation.
 !yarn.lock
 
-# Ignore everything else unnecessary
+# Ignore the frontend directory.
 **/frontend/
+# Ignore the public directory.
 **/public/
+# Ignore the node_modules directory.
 **/node_modules/
+# Ignore Git metadata.
 .git
+# Ignore the .gitignore file.
 .gitignore
+# Ignore Markdown files.
 *.md
+# Ignore the environment file.
 .env
+# Ignore the distribution directory.
 dist/
+# Ignore the build directory.
 build/

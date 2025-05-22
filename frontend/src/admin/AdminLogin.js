@@ -6,7 +6,7 @@ import Button from 'react-bootstrap/Button';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import styles from '../pages/Login.module.css'; // Import the same CSS module
+import styles from '../pages/Login.module.css'; 
 
 
 function AdminLogin() {

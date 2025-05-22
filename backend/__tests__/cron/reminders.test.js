@@ -1,12 +1,11 @@
-// c:\Users\Anas\Desktop\backend\__tests__\cron\reminders.test.js
-
+// Test suite for the reminder cron job's core logic.
 const { runReminderCheckJob } = require('../../server'); // Import the job function
 const { sendReminderEmail } = require('../../utils/mailer');
 const Schedule = require('../../models/Schedule');
 const SentReminder = require('../../models/SentReminder');
 const { generateOccurrencesInRange } = require('../../utils/scheduleUtils');
 
-// Mock the modules
+// Mock the modules required by the cron job
 jest.mock('../../models/Schedule');
 jest.mock('../../models/SentReminder');
 jest.mock('../../utils/mailer');
@@ -19,6 +18,7 @@ SentReminder.prototype.save = mockSave;
 
 describe('Reminder Cron Job Logic', () => {
   // --- MOCK SETUP FOR find().populate() ---
+  // This setup mocks the Mongoose chained call: Schedule.find().populate()
   const mockPopulate = jest.fn(); // Mock for the .populate() method
   const mockFind = jest.fn(() => ({ // Mock for Schedule.find()
       populate: mockPopulate // .find() returns an object with a mock .populate
@@ -28,6 +28,7 @@ describe('Reminder Cron Job Logic', () => {
   // --- END MOCK SETUP ---
 
 
+  // Resets all relevant mocks before each test case to ensure a clean state and test isolation.
   beforeEach(() => {
     // Reset mocks before each test to ensure test isolation
     mockFind.mockClear(); // Clear calls to Schedule.find
@@ -38,8 +39,9 @@ describe('Reminder Cron Job Logic', () => {
     mockSave.mockClear(); // Clear calls to the SentReminder instance save mock
   });
 
+  // Test case: Verifies that a reminder email is sent if it hasn't been sent previously for an occurrence.
   it('should send reminder if not sent before', async () => {
-    // 1. Arrange: Setup mock data and mock return values
+    // 1. Arrange: Setup mock data and mock return values for this specific test
     const mockRule = {
       _id: 'schedule-123',
       owner: { _id: 'user-abc', email: 'test@example.com' }, // Populated owner data
@@ -94,9 +96,9 @@ describe('Reminder Cron Job Logic', () => {
     expect(mockSave).toHaveBeenCalledTimes(1);
   });
 
-
+  // Test case: Verifies that duplicate reminders are not sent if a reminder for an occurrence has already been processed.
   it('should prevent duplicate reminders', async () => {
-    // 1. Arrange
+    // 1. Arrange: Setup mock data and mock return values for this specific test
     const mockRule = {
       _id: 'schedule-456',
       owner: { _id: 'user-def', email: 'another@example.com' },
@@ -126,10 +128,10 @@ describe('Reminder Cron Job Logic', () => {
     // Mock SentReminder.findOne to simulate reminder WAS found (return a truthy object)
     SentReminder.findOne.mockResolvedValue({ reminderKey: 'some_key', /* other fields */ });
 
-    // 2. Act
+    // 2. Act: Directly call the job logic function
     await runReminderCheckJob();
 
-    // 3. Assert
+    // 3. Assert: Check if functions were called as expected
     expect(mockFind).toHaveBeenCalledTimes(1);
     expect(mockPopulate).toHaveBeenCalledWith('owner', 'email');
     expect(generateOccurrencesInRange).toHaveBeenCalledTimes(1);
@@ -142,7 +144,5 @@ describe('Reminder Cron Job Logic', () => {
     expect(sendReminderEmail).not.toHaveBeenCalled();
     expect(mockSave).not.toHaveBeenCalled();
   });
-
-
-
 });
+
