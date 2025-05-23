@@ -85,17 +85,17 @@ The project is organized into two main directories:
     *   `server.js`: Main entry point for the backend server.
 *   `.github/workflows/`: Contains GitHub Actions workflow files for CI/CD.
 *   `.dockerignore`: Specifies files to exclude from the Docker build context for the backend.
-*   `Dockerfile` (expected in `backend/`): Defines the Docker image for the backend.
+*   `Dockerfile` ( in `backend/`): Defines the Docker image for the backend.
 
 ## Setup and Installation
 
 ### Prerequisites
 *   Node.js (v20.x recommended)
 *   Yarn (or npm)
-*   MongoDB instance (local or cloud-hosted like MongoDB Atlas)
-*   AWS Account (for S3, ECR, EC2 if deploying)
+*   MongoDB instance (  MongoDB Atlas)
+*   AWS Account (for S3, ECR, EC2)
 *   OpenAI API Key
-*   Gmail account with an "App Password" (if using Gmail for Nodemailer)
+*   Gmail account with an "App Password" (using Gmail for Nodemailer)
 
 ### Backend Setup
 1.  Navigate to the `backend` directory:
