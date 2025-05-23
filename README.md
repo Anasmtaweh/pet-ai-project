@@ -190,4 +190,4 @@ The EC2 instance is configured to pull the latest image from ECR and run the bac
 
 ---
 
-This should give you a solid foundation for your project's README! You might want to add more specific details or sections as your project evolves.
+
