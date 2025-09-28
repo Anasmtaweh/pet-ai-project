@@ -54,7 +54,7 @@ const logActivity = async (type, details, userId, adminUserId = null, petId = nu
 
 // Route to get the details of the currently authenticated admin user.
 // GET /admin/user
-router.get('/user', adminMiddleware, async (req, res) => {
+router.get('/user', profileLimiter, adminMiddleware, async (req, res) => {
     try {
         // req.user.id is set by the adminMiddleware
         const user = await User.findById(req.user.id).select('-password');
