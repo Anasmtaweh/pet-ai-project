@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
         trim: true,     // Automatically removes leading/trailing whitespace.
         lowercase: true, // Converts email to lowercase before saving.
         // Regex to validate the email format.
-        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
+        match: [/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/, 'Please enter a valid email'],
     },
     // User's password. Stored as a hash.
     password: {
