@@ -76,7 +76,7 @@ router.post('/add', async (req, res) => {
 
 // Route to update an existing schedule by its ID.
 // PUT /schedules/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', updateScheduleLimiter, async (req, res) => {
     try {
         const scheduleId = req.params.id;
         // Validate that the scheduleId is a valid MongoDB ObjectId format.
