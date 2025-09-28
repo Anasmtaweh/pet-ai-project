@@ -133,7 +133,7 @@ router.delete('/users/:id', adminMiddleware, async (req, res) => {
 
 // Route to update a user's status (activate/deactivate).
 // PUT /admin/users/:id
-router.put('/users/:id', adminMiddleware, async (req, res) => {
+router.put('/users/:id', profileLimiter, adminMiddleware, async (req, res) => {
     const userId = req.params.id;
     const { isActive: requestedStatus } = req.body; // Get the requested status from the request body.
 
