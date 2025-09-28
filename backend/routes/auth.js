@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const PasswordResetToken = require('../models/PasswordResetToken');
 const RecentActivity = require('../models/RecentActivity');
@@ -14,7 +15,6 @@ const userMiddleware = require('../middleware/userMiddleware');
 const { sendPasswordResetEmail } = require('../utils/mailer');
 
 const router = express.Router();
-
 // Route for user registration.
 // POST /auth/signup
 router.post('/signup', async (req, res) => {
@@ -231,7 +231,7 @@ router.post('/forgot-password', async (req, res) => {
 
 // Route to reset the password using a valid token.
 // POST /auth/reset-password/:token
-router.post('/reset-password/:token', async (req, res) => {
+router.post('/reset-password/:token', resetPasswordLimiter, async (req, res) => {
     try {
         const { token } = req.params;
         const { password } = req.body;
