@@ -136,7 +136,7 @@ router.get('/user', userDetailLimiter, userMiddleware, async (req, res) => {
 // Route for a user to update their own password.
 // PUT /auth/settings/password
 // Protected by userMiddleware.
-router.put('/settings/password', userMiddleware, async (req, res) => {
+router.put('/settings/password', passwordChangeLimiter, userMiddleware, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         const user = await User.findById(req.user.id);
