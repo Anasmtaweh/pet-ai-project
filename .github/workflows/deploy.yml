@@ -19,6 +19,8 @@ jobs:
   # --- TEST JOB ---
   test:
     name: Run Unit Tests
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     defaults:
       run:
