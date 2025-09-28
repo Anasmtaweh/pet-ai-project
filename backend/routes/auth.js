@@ -68,9 +68,12 @@ router.post('/login', async (req, res) => {
         if (!email || !password) {
             return res.status(400).json({ message: 'Email and password are required' });
         }
+        if (typeof email !== 'string') {
+            return res.status(400).json({ message: 'Invalid email format' });
+        }
 
         // Find the user by email.
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: { $eq: email } });
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
