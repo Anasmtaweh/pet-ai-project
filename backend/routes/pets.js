@@ -11,6 +11,11 @@ const { uploadFileToS3, deleteFileFromS3 } = require('../utils/s3Utils');
 
 const rateLimit = require('express-rate-limit');
 // Limit to 100 requests per 15 minutes per IP for "get all pets" endpoint
+// Limit to 100 requests per 15 minutes per IP for "get pet by ID" endpoint
+const getPetByIdLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // max 100 requests per windowMs
+});
 const getAllPetsLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
@@ -214,7 +219,7 @@ router.get('/', getAllPetsLimiter, async (req, res) => {
 
 // Route to get a specific pet by its ID.
 // GET /pets/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', getPetByIdLimiter, async (req, res) => {
     try {
         const petId = req.params.id;
         // Validate the petId format.
