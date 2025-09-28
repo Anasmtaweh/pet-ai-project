@@ -30,10 +30,18 @@ const userDetailLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+// Rate limiter for signup route: max 5 requests per 15 minutes per IP.
+const signupLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5,
+    message: { message: 'Too many signup attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 const router = express.Router();
 // Route for user registration.
 // POST /auth/signup
-router.post('/signup', async (req, res) => {
+router.post('/signup', signupLimiter, async (req, res) => {
     try {
         const { email, password, username, age } = req.body;
 
