@@ -228,7 +228,7 @@ router.put('/users/:id', profileLimiter, adminMiddleware, async (req, res) => {
 
 // Route to get all pets, populating owner's email.
 // GET /admin/pets
-router.get('/pets', adminMiddleware, async (req, res) => {
+router.get('/pets', profileLimiter, adminMiddleware, async (req, res) => {
     try {
         const pets = await Pet.find().populate('owner', 'email'); // Populate the 'owner' field with 'email'.
 
