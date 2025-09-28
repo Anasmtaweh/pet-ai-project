@@ -184,7 +184,7 @@ router.put('/users/:id', adminMiddleware, async (req, res) => {
 
     } catch (error) {
         // Log any errors that occurred during the find or save process.
-        console.error(`Error processing status update for user ${userId}:`, error);
+        console.error('Error processing status update for user %s:', userId, error);
         saveError = error.message;
         res.status(500).json({
              message: 'Server error occurred during status update',
