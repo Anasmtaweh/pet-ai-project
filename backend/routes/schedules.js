@@ -1,11 +1,10 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const Schedule = require('../models/Schedule');
 const User = require('../models/User');
 const RecentActivity = require('../models/RecentActivity');
 const mongoose = require('mongoose'); // Import mongoose to check ObjectId validity
-
-// Route to get all schedules for a specific owner.
 // GET /schedules/owner/:ownerId
 router.get('/owner/:ownerId', async (req, res) => {
     try {
@@ -124,7 +123,7 @@ router.put('/:id', async (req, res) => {
 
 // Route to delete a schedule by its ID.
 // DELETE /schedules/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', deleteScheduleLimiter, async (req, res) => {
     try {
          const scheduleId = req.params.id;
          // Validate that the scheduleId is a valid MongoDB ObjectId format.
