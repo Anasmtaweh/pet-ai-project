@@ -254,7 +254,7 @@ router.delete('/pets/:id', adminMiddleware, async (req, res) => {
 
 // Route for an admin to update their own password.
 // PUT /admin/settings/password
-router.put('/settings/password', adminMiddleware, async (req, res) => {
+router.put('/settings/password', profileLimiter, adminMiddleware, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         const userId = req.user.id; // Get admin's ID from the authenticated user in middleware.
