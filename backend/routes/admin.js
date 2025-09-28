@@ -26,6 +26,15 @@ const deleteUserLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// Set up a rate limiter for the dashboard statistics route.
+const dashboardLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes window
+    max: 10, // limit each admin to 10 dashboard requests per windowMs
+    message: { message: 'Too many dashboard requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Helper function for logging recent activities.
 const logActivity = async (type, details, userId, adminUserId = null, petId = null, scheduleId = null) => {
     try {
@@ -62,7 +71,7 @@ router.get('/user', adminMiddleware, async (req, res) => {
 
 // Route to get dashboard statistics for the admin panel.
 // GET /admin/dashboard
-router.get('/dashboard', adminMiddleware, async (req, res) => {
+router.get('/dashboard', dashboardLimiter, adminMiddleware, async (req, res) => {
     try {
         const totalUsers = await User.countDocuments();
         const totalPets = await Pet.countDocuments();
