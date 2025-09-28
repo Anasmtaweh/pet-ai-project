@@ -86,10 +86,16 @@ router.put('/:id', async (req, res) => {
 
         // Destructure only the fields allowed for update from the request body.
         const { title, start, end, type, repeat, repeatType, repeatDays } = req.body;
-        const updateData = { title, start, end, type, repeat, repeatType, repeatDays };
-
-        // Remove any fields from updateData that are undefined to prevent overwriting existing values with null/undefined.
-        Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+        // Sanitize and validate update data
+        const updateData = {};
+        if (typeof title === 'string') updateData.title = title;
+        if (typeof start === 'string' || start instanceof Date) updateData.start = start;
+        if (typeof end === 'string' || end instanceof Date) updateData.end = end;
+        if (typeof type === 'string') updateData.type = type;
+        if (typeof repeat === 'boolean') updateData.repeat = repeat;
+        if (typeof repeatType === 'string') updateData.repeatType = repeatType;
+        // repeatDays should be an array of (strings or numbers), but not objects
+        if (Array.isArray(repeatDays) && repeatDays.every(d => typeof d === 'string' || typeof d === 'number')) updateData.repeatDays = repeatDays;
 
         // If no valid update data is provided, return a 400 error.
         if (Object.keys(updateData).length === 0) {
