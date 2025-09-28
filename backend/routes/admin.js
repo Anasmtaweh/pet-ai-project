@@ -99,7 +99,7 @@ router.get('/dashboard', dashboardLimiter, adminMiddleware, async (req, res) => 
 
 // Route to get a list of all users in the system.
 // GET /admin/users
-router.get('/users', adminMiddleware, async (req, res) => {
+router.get('/users', dashboardLimiter, adminMiddleware, async (req, res) => {
     try {
         const users = await User.find().select('-password'); // Exclude password from the response
         res.json(users);
