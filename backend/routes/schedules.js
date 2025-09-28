@@ -1,12 +1,17 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const getSchedulesByOwnerLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: { message: "Too many requests for schedules by owner. Please try again later." }
+});
 const router = express.Router();
 const Schedule = require('../models/Schedule');
 const User = require('../models/User');
 const RecentActivity = require('../models/RecentActivity');
 const mongoose = require('mongoose'); // Import mongoose to check ObjectId validity
 // GET /schedules/owner/:ownerId
-router.get('/owner/:ownerId', async (req, res) => {
+router.get('/owner/:ownerId', getSchedulesByOwnerLimiter, async (req, res) => {
     try {
         const ownerId = req.params.ownerId;
         // Validate that the ownerId is a valid MongoDB ObjectId format.
