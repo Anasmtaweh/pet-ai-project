@@ -9,6 +9,15 @@ const Pet = require('../models/Pet');
 const RecentActivity = require('../models/RecentActivity');
 const { uploadFileToS3, deleteFileFromS3 } = require('../utils/s3Utils');
 
+const rateLimit = require('express-rate-limit');
+// Limit to 100 requests per 15 minutes per IP for "get all pets" endpoint
+const getAllPetsLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
 // --- Multer Configuration for File Uploads ---
 // Maximum allowed file size for pet pictures (5MB).
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -186,7 +195,7 @@ router.get('/owner/:ownerId', async (req, res) => {
 
 // Route to get all pets in the system.
 // GET /pets/
-router.get('/', async (req, res) => {
+router.get('/', getAllPetsLimiter, async (req, res) => {
     try {
         // Find all pets and populate their owner's username.
         const pets = await Pet.find().populate('owner', 'username');
