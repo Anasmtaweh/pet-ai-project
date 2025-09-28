@@ -22,8 +22,8 @@ router.post('/signup', async (req, res) => {
         const { email, password, username, age } = req.body;
 
         // Basic input validation.
-        if (!email || !password || !username || !age) {
-            return res.status(400).json({ message: 'All fields are required' });
+        if (!email || typeof email !== 'string' || !password || !username || !age) {
+            return res.status(400).json({ message: 'All fields are required and email must be a string' });
         }
 
         // Check if a user with the given email already exists.
