@@ -197,6 +197,9 @@ router.post('/forgot-password', async (req, res) => {
         if (!email) {
              return res.status(400).json({ message: 'Email is required' });
         }
+        if (typeof email !== 'string') {
+            return res.status(400).json({ message: 'Invalid email format.' });
+        }
         const user = await User.findOne({ email });
 
         // If user not found, send a generic success message to prevent email enumeration.
