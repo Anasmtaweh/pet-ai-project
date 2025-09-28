@@ -1,11 +1,21 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const User = require('../models/User');
 const Pet = require('../models/Pet');
 const Schedule = require('../models/Schedule');
 const RecentActivity = require('../models/RecentActivity');
 const adminMiddleware = require('../middleware/adminMiddleware');
 const bcrypt = require('bcrypt');
+
+// Set up a rate limiter for sensitive admin changes (profile, password, etc.)
+const profileLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes window
+    max: 5, // limit each user to 5 requests per windowMs
+    message: { message: 'Too many profile update attempts, please try again later.' },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 
 // Helper function for logging recent activities.
 const logActivity = async (type, details, userId, adminUserId = null, petId = null, scheduleId = null) => {
@@ -285,7 +295,7 @@ router.put('/settings/password', adminMiddleware, async (req, res) => {
 
 // Route for an admin to update their own profile information (username, age).
 // PUT /admin/settings/profile
-router.put('/settings/profile', adminMiddleware, async (req, res) => {
+router.put('/settings/profile', profileLimiter, adminMiddleware, async (req, res) => {
     try {
         const { username, age } = req.body;
         const userId = req.user.id; // Get admin's ID from the authenticated user in middleware.
