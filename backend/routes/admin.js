@@ -248,7 +248,7 @@ router.get('/pets', profileLimiter, adminMiddleware, async (req, res) => {
 
 // Route to delete a specific pet by its ID.
 // DELETE /admin/pets/:id
-router.delete('/pets/:id', adminMiddleware, async (req, res) => {
+router.delete('/pets/:id', profileLimiter, adminMiddleware, async (req, res) => {
     try {
         const adminUserId = req.user.id;
         const petIdToDelete = req.params.id;
