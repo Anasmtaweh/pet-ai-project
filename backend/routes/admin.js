@@ -17,6 +17,15 @@ const profileLimiter = rateLimit({
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
+// Set up a rate limiter specifically for destructive user deletion operations.
+const deleteUserLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 3, // limit each admin to 3 deletion requests per windowMs
+    message: { message: 'Too many user deletions attempted, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Helper function for logging recent activities.
 const logActivity = async (type, details, userId, adminUserId = null, petId = null, scheduleId = null) => {
     try {
@@ -93,7 +102,7 @@ router.get('/users', adminMiddleware, async (req, res) => {
 
 // Route to delete a user and all their associated data (pets, schedules).
 // DELETE /admin/users/:id
-router.delete('/users/:id', adminMiddleware, async (req, res) => {
+router.delete('/users/:id', adminMiddleware, deleteUserLimiter, async (req, res) => {
     try {
         const adminUserId = req.user.id; // ID of the admin performing the action
         const userIdToDelete = req.params.id;
