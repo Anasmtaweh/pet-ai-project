@@ -14,6 +14,14 @@ const jwtSecret = require('../config/jwtSecret');
 const userMiddleware = require('../middleware/userMiddleware');
 const { sendPasswordResetEmail } = require('../utils/mailer');
 
+// Rate limiter for profile update route: max 5 requests per 15 minutes per IP.
+const profileUpdateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5,
+    message: { message: 'Too many profile update attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 const router = express.Router();
 // Route for user registration.
 // POST /auth/signup
@@ -154,7 +162,7 @@ router.put('/settings/password', userMiddleware, async (req, res) => {
 // Route for a user to update their own profile information (username, age).
 // PUT /auth/settings/profile
 // Protected by userMiddleware.
-router.put('/settings/profile', userMiddleware, async (req, res) => {
+router.put('/settings/profile', userMiddleware, profileUpdateLimiter, async (req, res) => {
     try {
         const { username, age } = req.body;
         const userId = req.user.id;
