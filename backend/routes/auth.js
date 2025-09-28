@@ -22,6 +22,14 @@ const profileUpdateLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+// Rate limiter for viewing user details: max 20 requests per 15 minutes per IP.
+const userDetailLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20,
+    message: { message: 'Too many requests for user info. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 const router = express.Router();
 // Route for user registration.
 // POST /auth/signup
@@ -110,7 +118,7 @@ router.post('/login', async (req, res) => {
 // Route to get the details of the currently authenticated user.
 // GET /auth/user
 // Protected by userMiddleware to ensure the user is authenticated and has 'user' role.
-router.get('/user', userMiddleware, async (req, res) => {
+router.get('/user', userDetailLimiter, userMiddleware, async (req, res) => {
     try {
         // req.user.id is set by the userMiddleware after token verification.
         const user = await User.findById(req.user.id).select('-password'); // Exclude password from response.
