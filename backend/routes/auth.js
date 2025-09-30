@@ -226,7 +226,7 @@ router.put('/settings/profile', userMiddleware, profileUpdateLimiter, async (req
 
 // Route to initiate the password reset process.
 // POST /auth/forgot-password
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) {
@@ -261,6 +261,12 @@ router.post('/forgot-password', async (req, res) => {
     }
 });
 
+// Rate limiter for forgot-password endpoint: limits requests to prevent abuse.
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour window
+  max: 5, // start blocking after 5 requests
+  message: "Too many password reset requests from this IP, please try again after an hour."
+});
 // Route to reset the password using a valid token.
 // POST /auth/reset-password/:token
 router.post('/reset-password/:token', resetPasswordLimiter, async (req, res) => {
