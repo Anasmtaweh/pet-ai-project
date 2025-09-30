@@ -5,6 +5,13 @@ const getSchedulesByOwnerLimiter = rateLimit({
     max: 100, // limit each IP to 100 requests per windowMs
     message: { message: "Too many requests for schedules by owner. Please try again later." }
 });
+
+// Rate limiter for adding an exception to a schedule
+const addExceptionLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: { message: "Too many requests for adding schedule exceptions. Please try again later." }
+});
 const router = express.Router();
 const Schedule = require('../models/Schedule');
 const User = require('../models/User');
@@ -166,7 +173,7 @@ router.delete('/:id', deleteScheduleLimiter, async (req, res) => {
 // Route to add an exception date to a repeating schedule rule.
 // This marks a specific occurrence of a repeating event as skipped.
 // POST /schedules/:id/exception
-router.post('/:id/exception', async (req, res) => {
+router.post('/:id/exception', addExceptionLimiter, async (req, res) => {
     try {
         const ruleId = req.params.id; // The ID of the schedule rule.
         // Validate that the ruleId is a valid MongoDB ObjectId format.
