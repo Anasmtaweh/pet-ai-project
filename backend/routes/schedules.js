@@ -100,14 +100,36 @@ router.put('/:id', updateScheduleLimiter, async (req, res) => {
         const { title, start, end, type, repeat, repeatType, repeatDays } = req.body;
         // Sanitize and validate update data
         const updateData = {};
-        if (typeof title === 'string') updateData.title = title;
-        if (typeof start === 'string' || start instanceof Date) updateData.start = start;
-        if (typeof end === 'string' || end instanceof Date) updateData.end = end;
-        if (typeof type === 'string') updateData.type = type;
+
+        // Helper function to check for safe values (no objects/arrays or keys starting with $)
+        function isSafePrimitive(val) {
+            if (
+                (typeof val === 'string' ||
+                 typeof val === 'number' ||
+                 typeof val === 'boolean')
+                && val !== null
+            ) {
+                return true;
+            }
+            // Allow valid Date objects
+            if (val instanceof Date && !isNaN(val.valueOf())) {
+                return true;
+            }
+            return false;
+        }
+
+        function isSafeArray(arr) {
+            return Array.isArray(arr) && arr.every(isSafePrimitive);
+        }
+
+        // For each key, ensure it is a safe primitive (no objects, arrays, or $ operators)
+        if (isSafePrimitive(title)) updateData.title = title;
+        if (isSafePrimitive(start)) updateData.start = start;
+        if (isSafePrimitive(end)) updateData.end = end;
+        if (isSafePrimitive(type)) updateData.type = type;
         if (typeof repeat === 'boolean') updateData.repeat = repeat;
-        if (typeof repeatType === 'string') updateData.repeatType = repeatType;
-        // repeatDays should be an array of (strings or numbers), but not objects
-        if (Array.isArray(repeatDays) && repeatDays.every(d => typeof d === 'string' || typeof d === 'number')) updateData.repeatDays = repeatDays;
+        if (isSafePrimitive(repeatType)) updateData.repeatType = repeatType;
+        if (isSafeArray(repeatDays)) updateData.repeatDays = repeatDays;
 
         // If no valid update data is provided, return a 400 error.
         if (Object.keys(updateData).length === 0) {
@@ -119,7 +141,7 @@ router.put('/:id', updateScheduleLimiter, async (req, res) => {
         // 'runValidators: true' ensures Mongoose schema validations are run on the update.
         const updatedSchedule = await Schedule.findByIdAndUpdate(
             scheduleId,
-            updateData,
+            { $set: updateData },
             { new: true, runValidators: true }
         );
 
