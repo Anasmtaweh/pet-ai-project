@@ -6,6 +6,33 @@ const getSchedulesByOwnerLimiter = rateLimit({
     message: { message: "Too many requests for schedules by owner. Please try again later." }
 });
 
+// Rate limiter for adding a new schedule
+const addScheduleLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 50, // limit each IP to 50 requests per windowMs
+    message: { message: "Too many requests for adding schedules. Please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Rate limiter for updating a schedule
+const updateScheduleLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 50, // limit each IP to 50 requests per windowMs
+    message: { message: "Too many requests for updating schedules. Please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Rate limiter for deleting a schedule
+const deleteScheduleLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 50, // limit each IP to 50 requests per windowMs
+    message: { message: "Too many requests for deleting schedules. Please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Rate limiter for adding an exception to a schedule
 const addExceptionLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -37,7 +64,7 @@ router.get('/owner/:ownerId', getSchedulesByOwnerLimiter, async (req, res) => {
 
 // Route to add a new schedule.
 // POST /schedules/add
-router.post('/add', async (req, res) => {
+router.post('/add', addScheduleLimiter, async (req, res) => {
     try {
         // Destructure all potential fields from the request body.
         const { title, start, end, type, repeat, repeatType, repeatDays, owner, exceptionDates } = req.body;
