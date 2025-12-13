@@ -191,5 +191,56 @@ describe('Auth Routes', () => {
         compareSpy.mockRestore(); // Clean up the spy.
     });
   });
+
+  // Test suite for the POST /auth/forgot-password endpoint.
+  describe('POST /auth/forgot-password', () => {
+    it('should create a password reset token and send email for existing user', async () => {
+      // Create a user to trigger the password reset flow.
+      const user = new User({
+        email: 'reset@example.com',
+        password: 'SomePassword1!',
+        username: 'resetuser',
+        age: 28
+      });
+      await user.save();
+
+      const response = await request(app)
+        .post('/auth/forgot-password')
+        .send({ email: 'reset@example.com' });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('message');
+
+      // Verify a token was created in the database.
+      const tokenDoc = await PasswordResetToken.findOne({ userId: user._id });
+      expect(tokenDoc).not.toBeNull();
+    });
+
+    it('should rate limit the forgot-password endpoint after 5 attempts', async () => {
+      // Create a user to trigger the password reset flow.
+      const userEmail = 'ratelimit@example.com';
+      const user = new User({
+        email: userEmail,
+        password: 'SomePassword1!',
+        username: 'ratelimituser',
+        age: 40
+      });
+      await user.save();
+
+      // Send 6 requests; the 6th should be rate limited.
+      const responses = [];
+      for (let i = 0; i < 6; i += 1) {
+        const res = await request(app).post('/auth/forgot-password').send({ email: userEmail });
+        responses.push(res);
+      }
+
+      // Expect first 5 to succeed and 6th to be 429.
+      for (let i = 0; i < 5; i += 1) {
+        expect(responses[i].statusCode).toBe(200);
+      }
+      const lastResponse = responses[5];
+      expect(lastResponse.statusCode).toBe(429);
+      expect(lastResponse.body.message).toBe('Too many password reset requests from this IP, please try again after an hour.');
+    });
+  });
 });
 

@@ -46,6 +46,30 @@ const loginLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+// Rate limiter for password change route: max 5 requests per 15 minutes per IP.
+const passwordChangeLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5,
+    message: { message: 'Too many password change attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+// Rate limiter for forgot-password endpoint: max 5 requests per hour per IP.
+const forgotPasswordLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour window
+    max: 5, // start blocking after 5 requests
+    message: { message: 'Too many password reset requests from this IP, please try again after an hour.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+// Rate limiter for reset-password endpoint: max 5 requests per hour per IP.
+const resetPasswordLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour window
+    max: 5,
+    message: { message: 'Too many password reset attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 const router = express.Router();
 // Route for user registration.
 // POST /auth/signup
@@ -261,12 +285,6 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
     }
 });
 
-// Rate limiter for forgot-password endpoint: limits requests to prevent abuse.
-const forgotPasswordLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour window
-  max: 5, // start blocking after 5 requests
-  message: "Too many password reset requests from this IP, please try again after an hour."
-});
 // Route to reset the password using a valid token.
 // POST /auth/reset-password/:token
 router.post('/reset-password/:token', resetPasswordLimiter, async (req, res) => {
