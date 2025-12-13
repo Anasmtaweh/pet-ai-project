@@ -210,7 +210,7 @@ router.put('/settings/password', passwordChangeLimiter, userMiddleware, async (r
 // Route for a user to update their own profile information (username, age).
 // PUT /auth/settings/profile
 // Protected by userMiddleware.
-router.put('/settings/profile', userMiddleware, profileUpdateLimiter, async (req, res) => {
+router.put('/settings/profile', profileUpdateLimiter, userMiddleware, async (req, res) => {
     try {
         const { username, age } = req.body;
         const userId = req.user.id;
