@@ -1,7 +1,7 @@
 // Import the admin middleware to be tested
 const adminMiddleware = require('../../middleware/adminMiddleware');
 // Import jsonwebtoken to mock its behavior
-const jwt =require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 // Import utilities for creating mock HTTP request and response objects
 const { createRequest, createResponse } = require('node-mocks-http');
 
@@ -34,7 +34,7 @@ describe('Admin Middleware', () => {
     req.headers.authorization = 'Bearer invalid-token'; // Set a dummy token in the header
     // Mock jwt.verify to return a user with a non-admin role
     jwt.verify.mockReturnValueOnce({ role: 'user' });
-    
+
     await adminMiddleware(req, res, next);
     expect(res.statusCode).toBe(403); // Expect a Forbidden status
   });
@@ -44,7 +44,7 @@ describe('Admin Middleware', () => {
     req.headers.authorization = 'Bearer valid-token'; // Set a dummy token in the header
     // Mock jwt.verify to return a user with an 'admin' role and an ID
     jwt.verify.mockReturnValueOnce({ role: 'admin', id: 'user-id' });
-    
+
     await adminMiddleware(req, res, next);
     // Expect the req.user object to be populated with the decoded token payload
     expect(req.user).toEqual({ role: 'admin', id: 'user-id' });

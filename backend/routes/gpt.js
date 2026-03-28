@@ -17,22 +17,22 @@ const LEBANON_PET_PRODUCTS = {
         { name: 'Petriotics', online: true },
         { name: 'Vetomall', online: true },
         { name: 'Buddy Pet Shop', online: true },
-      ]
+      ],
     },
     {
       brand: 'Whiskas',
       stores: [
         { name: 'Carrefour Lebanon', online: true },
         { name: 'Spinneys Lebanon', online: true },
-      ]
+      ],
     },
     {
-      brand: 'Hill\'s Science Diet',
+      brand: "Hill's Science Diet",
       stores: [
         { name: 'Petriotics', online: true },
-        { name: 'Vetzone', online: true }
-      ]
-    }
+        { name: 'Vetzone', online: true },
+      ],
+    },
   ],
   dog: [
     {
@@ -41,23 +41,23 @@ const LEBANON_PET_PRODUCTS = {
         { name: 'Petriotics', online: true },
         { name: 'Vetomall', online: true },
         { name: 'Buddy Pet Shop', online: true },
-      ]
+      ],
     },
     {
       brand: 'Pedigree',
       stores: [
         { name: 'Carrefour Lebanon', online: true },
-        { name: 'Spinneys Lebanon', online: true }
-      ]
+        { name: 'Spinneys Lebanon', online: true },
+      ],
     },
     {
       brand: 'Acana',
       stores: [
         { name: 'Petriotics', online: true },
-        { name: 'Vetzone', online: true }
-      ]
-    }
-  ]
+        { name: 'Vetzone', online: true },
+      ],
+    },
+  ],
 };
 
 // Route to handle questions sent to the OpenAI GPT model.
@@ -87,47 +87,47 @@ Only if a question is clearly NOT related to pets, pet care, or pet products, sh
 `;
 
     // Initialize the messages array with the system prompt.
-    let messages = [{ role: "system", content: systemPrompt }];
+    let messages = [{ role: 'system', content: systemPrompt }];
 
     // Append valid conversation history to the messages array.
     // This provides context to the AI for follow-up questions.
     if (history && Array.isArray(history)) {
-        const validHistory = history.filter(
-            item => (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string'
-        );
-        messages = messages.concat(validHistory);
+      const validHistory = history.filter(
+        (item) =>
+          (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string',
+      );
+      messages = messages.concat(validHistory);
     }
 
     // Add the current user's question to the messages array.
-    messages.push({ role: "user", content: question });
+    messages.push({ role: 'user', content: question });
 
     // Make a request to the OpenAI Chat Completions API.
     const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo", // Specifies the GPT model to use.
-        messages: messages,       // The array of messages forming the conversation.
-        max_tokens: 250,          // Limits the length of the AI's response.
-        temperature: 0.7,         // Controls the randomness/creativity of the response.
+      model: 'gpt-3.5-turbo', // Specifies the GPT model to use.
+      messages: messages, // The array of messages forming the conversation.
+      max_tokens: 250, // Limits the length of the AI's response.
+      temperature: 0.7, // Controls the randomness/creativity of the response.
     });
 
     // Extract the AI's answer from the API response.
     const answer = completion.choices[0].message.content.trim();
     // Send the AI's answer back to the client.
     res.json({ answer });
-
   } catch (error) {
     // Handle errors from the OpenAI API or other issues.
-    console.error("Error in /gpt/ask:", error);
-    let errorMessage = "Something went wrong processing your question.";
+    console.error('Error in /gpt/ask:', error);
+    let errorMessage = 'Something went wrong processing your question.';
     // Provide more specific error messages if available from the OpenAI API error object.
     if (error instanceof OpenAI.APIError) {
-        errorMessage = error.message || "OpenAI API Error";
-        if (error.response?.data?.error) {
-            errorMessage = error.response.data.error.message;
-        } else if (error.status) {
-             errorMessage = `OpenAI API Error (Status: ${error.status}): ${error.message}`;
-        }
+      errorMessage = error.message || 'OpenAI API Error';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error.message;
+      } else if (error.status) {
+        errorMessage = `OpenAI API Error (Status: ${error.status}): ${error.message}`;
+      }
     } else if (error.message) {
-        errorMessage = error.message;
+      errorMessage = error.message;
     }
     res.status(error.status || 500).json({ error: errorMessage });
   }

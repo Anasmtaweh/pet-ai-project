@@ -26,7 +26,7 @@ function AIChat() {
 
   // Effect hook to set the document title and fetch user's pets on component mount.
   useEffect(() => {
-    document.title = "MISHTIKA - AI Chat";
+    document.title = 'MISHTIKA - AI Chat';
 
     // Fetches the user's pets to allow them to be selected for chat context.
     const fetchPets = async () => {
@@ -42,7 +42,8 @@ function AIChat() {
         });
         setUserPets(response.data || []);
       } catch (err) {
-        if (err.response?.status !== 404) { // Don't show error if user simply has no pets.
+        if (err.response?.status !== 404) {
+          // Don't show error if user simply has no pets.
           console.error('Error fetching pets:', err);
         }
         setUserPets([]);
@@ -61,7 +62,7 @@ function AIChat() {
     setError(null);
 
     // Finds the selected pet to include its details in the AI prompt.
-    const selectedPet = userPets.find(pet => pet._id === selectedPetId);
+    const selectedPet = userPets.find((pet) => pet._id === selectedPetId);
 
     // Constructs the question for the AI, including pet context if a pet is selected.
     const currentQuestionForAI = selectedPet
@@ -93,22 +94,25 @@ My question is: ${userInput}
       // API call to the backend's GPT endpoint.
       const response = await axios.post('https://mishtika.duckdns.org/gpt/ask', {
         question: currentQuestionForAI, // Sends the potentially context-enriched question.
-        history: historyForAPI          // Sends the conversation history.
+        history: historyForAPI, // Sends the conversation history.
       });
 
       // Creates the AI's response message object.
       const aiResponse = { role: 'assistant', content: response.data.answer };
       // Appends the AI's response to the chat messages.
-      setMessages(prevMessages => [...prevMessages, aiResponse]);
-
+      setMessages((prevMessages) => [...prevMessages, aiResponse]);
     } catch (error) {
-      console.error("Error asking AI:", error);
-      const errorMessageContent = error.response?.data?.error || error.message || "An error occurred asking the AI.";
+      console.error('Error asking AI:', error);
+      const errorMessageContent =
+        error.response?.data?.error || error.message || 'An error occurred asking the AI.';
       setError(errorMessageContent); // Sets a general error message for display.
 
       // Adds an error message to the chat UI, appearing as an AI response.
-      const errorMessageForChat = { role: 'assistant', content: `Sorry, I encountered an error: ${errorMessageContent}` };
-      setMessages(prevMessages => [...prevMessages, errorMessageForChat]);
+      const errorMessageForChat = {
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${errorMessageContent}`,
+      };
+      setMessages((prevMessages) => [...prevMessages, errorMessageForChat]);
     } finally {
       setLoading(false); // Resets the loading state.
     }
@@ -121,8 +125,12 @@ My question is: ${userInput}
       {/* Chatbox for displaying messages */}
       <div className={styles.chatbox}>
         {messages.map((message, index) => (
-          <div key={index} className={message.role === 'user' ? styles.userMessage : styles.aiMessage}>
-            <span className={styles.messageRole}>{message.role === 'user' ? 'You' : 'AI'}: </span> {message.content}
+          <div
+            key={index}
+            className={message.role === 'user' ? styles.userMessage : styles.aiMessage}
+          >
+            <span className={styles.messageRole}>{message.role === 'user' ? 'You' : 'AI'}: </span>{' '}
+            {message.content}
           </div>
         ))}
         {/* Loading indicator while AI is processing */}
@@ -151,7 +159,9 @@ My question is: ${userInput}
                   </option>
                 ))
               ) : (
-                <option value="" disabled>No pets found</option>
+                <option value="" disabled>
+                  No pets found
+                </option>
               )}
             </Form.Select>
           </Col>
@@ -168,7 +178,12 @@ My question is: ${userInput}
           </Col>
           {/* Send button */}
           <Col xs={12} md={2} className="d-grid">
-            <Button className={styles.sendButton} variant="primary" type="submit" disabled={loading}>
+            <Button
+              className={styles.sendButton}
+              variant="primary"
+              type="submit"
+              disabled={loading}
+            >
               {loading ? 'Sending...' : 'Send'}
             </Button>
           </Col>
@@ -179,6 +194,3 @@ My question is: ${userInput}
 }
 
 export default AIChat;
-
-
-

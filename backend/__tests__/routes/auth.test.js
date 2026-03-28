@@ -20,7 +20,7 @@ const PasswordResetToken = require('../../models/PasswordResetToken');
 
 // Mock the mailer utility to prevent actual email sending during tests.
 jest.mock('../../utils/mailer', () => ({
-    sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
 }));
 
 let mongoServer;
@@ -55,7 +55,6 @@ beforeEach(async () => {
 
 // Test suite for authentication-related routes (e.g., signup, login).
 describe('Auth Routes', () => {
-
   // Test suite for the POST /auth/signup endpoint.
   describe('POST /auth/signup', () => {
     // Test case: Verifies successful user creation with valid input data.
@@ -66,7 +65,7 @@ describe('Auth Routes', () => {
           email: 'test@example.com',
           password: 'ValidPass123!',
           username: 'testuser',
-          age: 25
+          age: 25,
         });
 
       expect(response.statusCode).toBe(201);
@@ -83,32 +82,39 @@ describe('Auth Routes', () => {
 
     // Test case: Verifies that the system prevents signup with an already existing email.
     it('should return 400 for existing email', async () => {
-       // Create a user first using the actual Mongoose model to simulate an existing user.
-       const existingUser = new User({ email: 'test@example.com', password: 'SomePassword1!', username: 'existing', age: 30 });
-       await existingUser.save(); // Let Mongoose handle hashing and other pre-save hooks.
+      // Create a user first using the actual Mongoose model to simulate an existing user.
+      const existingUser = new User({
+        email: 'test@example.com',
+        password: 'SomePassword1!',
+        username: 'existing',
+        age: 30,
+      });
+      await existingUser.save(); // Let Mongoose handle hashing and other pre-save hooks.
 
-      const response = await request(app)
-        .post('/auth/signup')
-        .send({
-          email: 'test@example.com', // Attempt to sign up with the same email.
-          password: 'ValidPass123!',
-          username: 'testuser',
-          age: 25
-        });
+      const response = await request(app).post('/auth/signup').send({
+        email: 'test@example.com', // Attempt to sign up with the same email.
+        password: 'ValidPass123!',
+        username: 'testuser',
+        age: 25,
+      });
 
       expect(response.statusCode).toBe(400);
       expect(response.body.message).toBe('User already exists');
     });
 
-     // Test case: Verifies that signup fails if required fields (like email) are missing.
-     // Consider adding more tests for other missing fields and invalid email/password formats.
-     it('should return 400 for missing email', async () => {
-        const response = await request(app)
-            .post('/auth/signup')
-            .send({ /* email is intentionally missing */ password: 'ValidPass123!', username: 'testuser', age: 25 });
-        expect(response.statusCode).toBe(400);
-        // Optionally, add an assertion for a specific error message if your validation provides one.
-     });
+    // Test case: Verifies that signup fails if required fields (like email) are missing.
+    // Consider adding more tests for other missing fields and invalid email/password formats.
+    it('should return 400 for missing email', async () => {
+      const response = await request(app)
+        .post('/auth/signup')
+        .send({
+          /* email is intentionally missing */ password: 'ValidPass123!',
+          username: 'testuser',
+          age: 25,
+        });
+      expect(response.statusCode).toBe(400);
+      // Optionally, add an assertion for a specific error message if your validation provides one.
+    });
   });
 
   // Test suite for the POST /auth/login endpoint.
@@ -116,15 +122,15 @@ describe('Auth Routes', () => {
     // A variable to hold the user created in the beforeEach hook for login tests.
     let testUser;
     beforeEach(async () => {
-        // Create a user to attempt login with before each login test.
-        testUser = new User({
-            email: 'test@example.com',
-            password: 'ValidPass123!', // Password will be hashed by the User model's pre-save hook.
-            username: 'testuser',
-            age: 30,
-            isActive: true
-        });
-        await testUser.save(); // Ensure pre-save hook runs and password gets hashed.
+      // Create a user to attempt login with before each login test.
+      testUser = new User({
+        email: 'test@example.com',
+        password: 'ValidPass123!', // Password will be hashed by the User model's pre-save hook.
+        username: 'testuser',
+        age: 30,
+        isActive: true,
+      });
+      await testUser.save(); // Ensure pre-save hook runs and password gets hashed.
     });
 
     // Test case: Verifies successful login and token generation for valid credentials.
@@ -148,47 +154,47 @@ describe('Auth Routes', () => {
 
     // Test case: Verifies that login fails with an invalid password.
     it('should return 400 for invalid password', async () => {
-        // Using a spy to control the bcrypt.compare behavior.
-        const compareSpy = jest.spyOn(bcrypt, 'compare');
-        compareSpy.mockResolvedValue(false); // Force bcrypt.compare to return false, simulating an incorrect password.
+      // Using a spy to control the bcrypt.compare behavior.
+      const compareSpy = jest.spyOn(bcrypt, 'compare');
+      compareSpy.mockResolvedValue(false); // Force bcrypt.compare to return false, simulating an incorrect password.
 
-        const response = await request(app)
-            .post('/auth/login')
-            .send({ email: 'test@example.com', password: 'WrongPassword!' });
+      const response = await request(app)
+        .post('/auth/login')
+        .send({ email: 'test@example.com', password: 'WrongPassword!' });
 
-        expect(response.statusCode).toBe(400);
-        expect(response.body.message).toBe('Invalid credentials');
+      expect(response.statusCode).toBe(400);
+      expect(response.body.message).toBe('Invalid credentials');
 
-        compareSpy.mockRestore(); // Clean up the spy.
+      compareSpy.mockRestore(); // Clean up the spy.
     });
 
     // Test case: Verifies that login fails if the provided email does not exist in the database.
-     it('should return 400 for non-existent email', async () => {
-        const response = await request(app)
-            .post('/auth/login')
-            .send({ email: 'nosuchuser@example.com', password: 'password' });
+    it('should return 400 for non-existent email', async () => {
+      const response = await request(app)
+        .post('/auth/login')
+        .send({ email: 'nosuchuser@example.com', password: 'password' });
 
-        expect(response.statusCode).toBe(400);
-        expect(response.body.message).toBe('Invalid credentials');
+      expect(response.statusCode).toBe(400);
+      expect(response.body.message).toBe('Invalid credentials');
     });
 
     // Test case: Verifies that login is forbidden for an inactive user account.
-     it('should return 403 for inactive user', async () => {
-        // Update the previously created user to be inactive for this test.
-        await User.updateOne({ email: testUser.email }, { isActive: false });
+    it('should return 403 for inactive user', async () => {
+      // Update the previously created user to be inactive for this test.
+      await User.updateOne({ email: testUser.email }, { isActive: false });
 
-        // Using a spy to control bcrypt.compare behavior.
-        const compareSpy = jest.spyOn(bcrypt, 'compare');
-        compareSpy.mockResolvedValue(true); // Assume password is correct for this test to isolate the isActive check.
+      // Using a spy to control bcrypt.compare behavior.
+      const compareSpy = jest.spyOn(bcrypt, 'compare');
+      compareSpy.mockResolvedValue(true); // Assume password is correct for this test to isolate the isActive check.
 
-        const response = await request(app)
-            .post('/auth/login')
-            .send({ email: testUser.email, password: 'ValidPass123!' });
+      const response = await request(app)
+        .post('/auth/login')
+        .send({ email: testUser.email, password: 'ValidPass123!' });
 
-        expect(response.statusCode).toBe(403);
-        expect(response.body.message).toBe('Your account is inactive. Please contact support.');
+      expect(response.statusCode).toBe(403);
+      expect(response.body.message).toBe('Your account is inactive. Please contact support.');
 
-        compareSpy.mockRestore(); // Clean up the spy.
+      compareSpy.mockRestore(); // Clean up the spy.
     });
   });
 
@@ -200,7 +206,7 @@ describe('Auth Routes', () => {
         email: 'reset@example.com',
         password: 'SomePassword1!',
         username: 'resetuser',
-        age: 28
+        age: 28,
       });
       await user.save();
 
@@ -222,7 +228,7 @@ describe('Auth Routes', () => {
         email: userEmail,
         password: 'SomePassword1!',
         username: 'ratelimituser',
-        age: 40
+        age: 40,
       });
       await user.save();
 
@@ -239,8 +245,9 @@ describe('Auth Routes', () => {
       }
       const lastResponse = responses[5];
       expect(lastResponse.statusCode).toBe(429);
-      expect(lastResponse.body.message).toBe('Too many password reset requests from this IP, please try again after an hour.');
+      expect(lastResponse.body.message).toBe(
+        'Too many password reset requests from this IP, please try again after an hour.',
+      );
     });
   });
 });
-

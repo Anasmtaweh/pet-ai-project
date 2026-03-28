@@ -4,44 +4,44 @@
 
 /* Defines global CSS custom properties (variables) for theming. */
 :root {
-    /* Color Palette: Defines the primary, secondary, accent, text, and status colors. */
-    --primary-color: #5F9EA0; /* Cadet Blue */
-    --secondary-color: #F5F5DC; /* Beige */
-    --accent-color-1: #A0522D; /* Sienna */
-    --accent-color-2: #8FBC8F; /* Dark Sea Green */
-    --text-color: #333333; /* Dark Gray */
-    --background-color: #FFFFFF; /* White */
-    --danger-color: #dc3545; /* Red */
-    --success-color: #28a745; /* Green */
-    --warning-color: #ffc107; /* Yellow */
-    --info-color: #17a2b8; /* Light Blue */
+  /* Color Palette: Defines the primary, secondary, accent, text, and status colors. */
+  --primary-color: #5f9ea0; /* Cadet Blue */
+  --secondary-color: #f5f5dc; /* Beige */
+  --accent-color-1: #a0522d; /* Sienna */
+  --accent-color-2: #8fbc8f; /* Dark Sea Green */
+  --text-color: #333333; /* Dark Gray */
+  --background-color: #ffffff; /* White */
+  --danger-color: #dc3545; /* Red */
+  --success-color: #28a745; /* Green */
+  --warning-color: #ffc107; /* Yellow */
+  --info-color: #17a2b8; /* Light Blue */
 
-    /* Typography: Defines font families for headings and body text. */
-    --heading-font: 'Oswald', sans-serif;
-    --body-font: 'Roboto', sans-serif;
+  /* Typography: Defines font families for headings and body text. */
+  --heading-font: 'Oswald', sans-serif;
+  --body-font: 'Roboto', sans-serif;
 
-    /* Spacing: Defines standard padding and margin sizes. */
-    --padding-small: 0.5rem;
-    --padding-medium: 1rem;
-    --padding-large: 1.5rem;
-    --margin-small: 0.5rem;
-    --margin-medium: 1rem;
-    --margin-large: 1.5rem;
+  /* Spacing: Defines standard padding and margin sizes. */
+  --padding-small: 0.5rem;
+  --padding-medium: 1rem;
+  --padding-large: 1.5rem;
+  --margin-small: 0.5rem;
+  --margin-medium: 1rem;
+  --margin-large: 1.5rem;
 
-    /* Border Radius: Defines standard border radius sizes for rounded corners. */
-    --border-radius-small: 0.25rem;
-    --border-radius-medium: 0.5rem;
-    --border-radius-large: 1rem;
+  /* Border Radius: Defines standard border radius sizes for rounded corners. */
+  --border-radius-small: 0.25rem;
+  --border-radius-medium: 0.5rem;
+  --border-radius-large: 1rem;
 }
 
 /* Base styles for the body element. */
 body {
-    margin: 0; /* Removes default browser margin. */
-    font-family: var(--body-font); /* Sets the default font for the application. */
-    -webkit-font-smoothing: antialiased; /* Improves font rendering on WebKit browsers. */
-    -moz-osx-font-smoothing: grayscale; /* Improves font rendering on Firefox. */
-    color: var(--text-color); /* Sets the default text color. */
-    background-color: var(--background-color); /* Sets the default background color. */
+  margin: 0; /* Removes default browser margin. */
+  font-family: var(--body-font); /* Sets the default font for the application. */
+  -webkit-font-smoothing: antialiased; /* Improves font rendering on WebKit browsers. */
+  -moz-osx-font-smoothing: grayscale; /* Improves font rendering on Firefox. */
+  color: var(--text-color); /* Sets the default text color. */
+  background-color: var(--background-color); /* Sets the default background color. */
 }
 
 /* Base styles for heading elements (h1-h6). */
@@ -51,118 +51,117 @@ h3,
 h4,
 h5,
 h6 {
-    font-family: var(--heading-font); /* Sets the font for headings. */
-    font-weight: 700; /* Sets the default font weight for headings. */
-    color: var(--primary-color); /* Sets the default color for headings. */
+  font-family: var(--heading-font); /* Sets the font for headings. */
+  font-weight: 700; /* Sets the default font weight for headings. */
+  color: var(--primary-color); /* Sets the default color for headings. */
 }
 
 /* Specific font sizes for heading levels. */
 h1 {
-    font-size: 2.5rem;
+  font-size: 2.5rem;
 }
 
 h2 {
-    font-size: 2rem;
+  font-size: 2rem;
 }
 
 h3 {
-    font-size: 1.75rem;
+  font-size: 1.75rem;
 }
 
 /* Global styles for primary buttons. */
 .btn-primary {
-    background-color: var(--accent-color-1);
-    border-color: var(--accent-color-1);
-    border-radius: var(--border-radius-small);
-    padding: var(--padding-small) var(--padding-medium);
-    font-weight: 700;
+  background-color: var(--accent-color-1);
+  border-color: var(--accent-color-1);
+  border-radius: var(--border-radius-small);
+  padding: var(--padding-small) var(--padding-medium);
+  font-weight: 700;
 }
 
 .btn-primary:hover {
-    background-color: #804022; /* Darker shade on hover */
-    border-color: #804022;
+  background-color: #804022; /* Darker shade on hover */
+  border-color: #804022;
 }
 
 /* Global styles for danger buttons. */
 .btn-danger {
-    background-color: var(--danger-color);
-    border-color: var(--danger-color);
-    border-radius: var(--border-radius-small);
-    padding: var(--padding-small) var(--padding-medium);
-    font-weight: 700;
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+  border-radius: var(--border-radius-small);
+  padding: var(--padding-small) var(--padding-medium);
+  font-weight: 700;
 }
 
 .btn-danger:hover {
-    background-color: #b32a38; /* Darker shade on hover */
-    border-color: #b32a38;
+  background-color: #b32a38; /* Darker shade on hover */
+  border-color: #b32a38;
 }
 
 /* Global styles for success buttons. */
 .btn-success {
-    background-color: var(--success-color);
-    border-color: var(--success-color);
-    border-radius: var(--border-radius-small);
-    padding: var(--padding-small) var(--padding-medium);
-    font-weight: 700;
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+  border-radius: var(--border-radius-small);
+  padding: var(--padding-small) var(--padding-medium);
+  font-weight: 700;
 }
 
 .btn-success:hover {
-    background-color: #218838; /* Darker shade on hover */
-    border-color: #218838;
+  background-color: #218838; /* Darker shade on hover */
+  border-color: #218838;
 }
 
 /* Global styles for warning buttons. */
 .btn-warning {
-    background-color: var(--warning-color);
-    border-color: var(--warning-color);
-    border-radius: var(--border-radius-small);
-    padding: var(--padding-small) var(--padding-medium);
-    font-weight: 700;
+  background-color: var(--warning-color);
+  border-color: var(--warning-color);
+  border-radius: var(--border-radius-small);
+  padding: var(--padding-small) var(--padding-medium);
+  font-weight: 700;
 }
 
 .btn-warning:hover {
-    background-color: #e0a800; /* Darker shade on hover */
-    border-color: #e0a800;
+  background-color: #e0a800; /* Darker shade on hover */
+  border-color: #e0a800;
 }
 
 /* Global styles for info buttons. */
 .btn-info {
-    background-color: var(--info-color);
-    border-color: var(--info-color);
-    border-radius: var(--border-radius-small);
-    padding: var(--padding-small) var(--padding-medium);
-    font-weight: 700;
+  background-color: var(--info-color);
+  border-color: var(--info-color);
+  border-radius: var(--border-radius-small);
+  padding: var(--padding-small) var(--padding-medium);
+  font-weight: 700;
 }
 
 .btn-info:hover {
-    background-color: #138496; /* Darker shade on hover */
-    border-color: #138496;
+  background-color: #138496; /* Darker shade on hover */
+  border-color: #138496;
 }
 
 /* Global styles for form control elements (inputs, textareas, selects). */
 .form-control {
-    border-color: var(--primary-color);
-    border-radius: var(--border-radius-small);
-    padding: var(--padding-small);
+  border-color: var(--primary-color);
+  border-radius: var(--border-radius-small);
+  padding: var(--padding-small);
 }
 
 /* Global styles for form labels. */
 .form-label {
-    font-weight: 700;
-    color: var(--text-color);
+  font-weight: 700;
+  color: var(--text-color);
 }
 
 /* Global styles for danger alerts. */
 .alert-danger {
-    background-color: #f8d7da;
-    border-color: #f5c6cb;
-    color: #721c24;
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
 }
 
 /* Global styles for success alerts. */
 .alert-success {
-    background-color: #d4edda;
-    border-color: #c3e6cb;
-    color: #155724;
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
 }
-

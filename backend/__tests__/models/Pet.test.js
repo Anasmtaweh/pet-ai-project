@@ -32,7 +32,6 @@ beforeEach(async () => {
 
 // Test suite for the Pet Mongoose model.
 describe('Pet Model', () => {
-
   // Helper function to generate valid data for creating a Pet instance.
   const createValidPetData = () => ({
     name: 'Buddy',
@@ -84,7 +83,16 @@ describe('Pet Model', () => {
   });
 
   // Dynamically create test cases to verify that all specified required fields are enforced.
-  const requiredFields = ['name', 'ageYears', 'ageMonths', 'weight', 'species', 'gender', 'breed', 'owner'];
+  const requiredFields = [
+    'name',
+    'ageYears',
+    'ageMonths',
+    'weight',
+    'species',
+    'gender',
+    'breed',
+    'owner',
+  ];
   requiredFields.forEach((field) => {
     it(`should fail to save if required field "${field}" is missing`, async () => {
       const invalidData = createValidPetData();
@@ -108,14 +116,22 @@ describe('Pet Model', () => {
     const invalidData = { ...createValidPetData(), species: 'Bird' }; // 'Bird' is not in the enum
     const pet = new Pet(invalidData);
     await expect(pet.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await pet.save(); } catch (error) { expect(error.errors.species).toBeDefined(); }
+    try {
+      await pet.save();
+    } catch (error) {
+      expect(error.errors.species).toBeDefined();
+    }
   });
 
   it('should fail to save with invalid gender', async () => {
     const invalidData = { ...createValidPetData(), gender: 'Unknown' }; // 'Unknown' is not in the enum
     const pet = new Pet(invalidData);
     await expect(pet.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await pet.save(); } catch (error) { expect(error.errors.gender).toBeDefined(); }
+    try {
+      await pet.save();
+    } catch (error) {
+      expect(error.errors.gender).toBeDefined();
+    }
   });
 
   // Test cases for numeric constraints (min/max values).
@@ -123,29 +139,43 @@ describe('Pet Model', () => {
     const invalidData = { ...createValidPetData(), ageYears: -1 };
     const pet = new Pet(invalidData);
     await expect(pet.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await pet.save(); } catch (error) { expect(error.errors.ageYears).toBeDefined(); }
+    try {
+      await pet.save();
+    } catch (error) {
+      expect(error.errors.ageYears).toBeDefined();
+    }
   });
 
   it('should fail to save with negative ageMonths', async () => {
     const invalidData = { ...createValidPetData(), ageMonths: -2 };
     const pet = new Pet(invalidData);
     await expect(pet.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await pet.save(); } catch (error) { expect(error.errors.ageMonths).toBeDefined(); }
+    try {
+      await pet.save();
+    } catch (error) {
+      expect(error.errors.ageMonths).toBeDefined();
+    }
   });
 
   it('should fail to save with ageMonths greater than 11', async () => {
     const invalidData = { ...createValidPetData(), ageMonths: 12 };
     const pet = new Pet(invalidData);
     await expect(pet.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await pet.save(); } catch (error) { expect(error.errors.ageMonths).toBeDefined(); }
+    try {
+      await pet.save();
+    } catch (error) {
+      expect(error.errors.ageMonths).toBeDefined();
+    }
   });
 
   it('should fail to save with negative weight', async () => {
     const invalidData = { ...createValidPetData(), weight: -5 };
     const pet = new Pet(invalidData);
     await expect(pet.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await pet.save(); } catch (error) { expect(error.errors.weight).toBeDefined(); }
+    try {
+      await pet.save();
+    } catch (error) {
+      expect(error.errors.weight).toBeDefined();
+    }
   });
-
 });
-

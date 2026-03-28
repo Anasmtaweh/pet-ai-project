@@ -36,7 +36,6 @@ afterEach(async () => {
 
 // Test suite for the SentReminder Mongoose model.
 describe('SentReminder Model', () => {
-
   // Helper function to generate valid data for creating a SentReminder instance.
   const createValidData = (keySuffix = '1') => ({
     reminderKey: `rule123_${Date.now()}_${keySuffix}`, // Ensure unique key for basic tests
@@ -77,10 +76,11 @@ describe('SentReminder Model', () => {
 
   // Test case: Verifies that saving a SentReminder fails if the required 'reminderKey' field is missing.
   it('should fail to save if required field "reminderKey" is missing', async () => {
-    const invalidData = { // Missing reminderKey
-        ruleId: new mongoose.Types.ObjectId(),
-        occurrenceStartTime: new Date(),
-        recipientEmail: 'test@example.com',
+    const invalidData = {
+      // Missing reminderKey
+      ruleId: new mongoose.Types.ObjectId(),
+      occurrenceStartTime: new Date(),
+      recipientEmail: 'test@example.com',
     };
     const sentReminder = new SentReminder(invalidData);
 
@@ -113,10 +113,10 @@ describe('SentReminder Model', () => {
 
     // More specific check for the MongoDB error code.
     try {
-        await reminder2.save();
+      await reminder2.save();
     } catch (error) {
-        // Check for the MongoDB duplicate key error code (11000).
-        expect(error.code).toBe(11000);
+      // Check for the MongoDB duplicate key error code (11000).
+      expect(error.code).toBe(11000);
     }
   });
 
@@ -137,14 +137,12 @@ describe('SentReminder Model', () => {
   it('should have a TTL index configured on "sentAt"', async () => {
     const indexes = await SentReminder.collection.indexes();
     // Find the index where the key is { sentAt: 1 } and expireAfterSeconds is set.
-    const ttlIndex = indexes.find(index =>
-        index.key && index.key.sentAt === 1 && index.hasOwnProperty('expireAfterSeconds')
+    const ttlIndex = indexes.find(
+      (index) => index.key && index.key.sentAt === 1 && index.hasOwnProperty('expireAfterSeconds'),
     );
 
     expect(ttlIndex).toBeDefined(); // Check that the TTL index exists.
     // Check if the expireAfterSeconds value matches the schema definition (7200 seconds = 2 hours).
     expect(ttlIndex.expireAfterSeconds).toBe(7200);
   });
-
 });
-

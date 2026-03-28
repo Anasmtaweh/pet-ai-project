@@ -11,16 +11,16 @@ describe('Schedule Utils', () => {
     title: 'Test Schedule',
     start: new Date('2024-01-01T09:00:00Z'), // Jan 1st 9am UTC
     // Extend the rule's end date beyond the test window to allow repetition
-    end: new Date('2024-01-05T10:00:00Z'),   // Example: End of series is Jan 5th
+    end: new Date('2024-01-05T10:00:00Z'), // Example: End of series is Jan 5th
     repeat: true,
     repeatType: 'daily',
-    exceptionDates: [] // Ensure this property exists, even if empty
+    exceptionDates: [], // Ensure this property exists, even if empty
   };
 
   // Test case: Verifies that daily occurrences are generated correctly within a given time window.
   it('should generate daily occurrences', () => {
     const windowStart = new Date('2024-01-01T00:00:00Z'); // Jan 1st midnight UTC
-    const windowEnd = new Date('2024-01-03T00:00:00Z');   // Jan 3rd midnight UTC
+    const windowEnd = new Date('2024-01-03T00:00:00Z'); // Jan 3rd midnight UTC
 
     const occurrences = generateOccurrencesInRange(mockRule, windowStart, windowEnd);
 
@@ -33,7 +33,7 @@ describe('Schedule Utils', () => {
     expect(occurrences[0].title).toBe('Test Schedule');
 
     expect(occurrences[1].start.toISOString()).toBe('2024-01-02T09:00:00.000Z'); // Check the second occurrence start
-    expect(occurrences[1].end.toISOString()).toBe('2024-01-02T10:00:00.000Z');   // Check the second occurrence end
+    expect(occurrences[1].end.toISOString()).toBe('2024-01-02T10:00:00.000Z'); // Check the second occurrence end
     expect(occurrences[1].ruleId).toBe('schedule-123');
     expect(occurrences[1].ownerId).toBe('user-123');
     expect(occurrences[1].title).toBe('Test Schedule');
@@ -44,7 +44,7 @@ describe('Schedule Utils', () => {
     const ruleWithException = {
       ...mockRule,
       // Exception for Jan 1st @ 9am UTC (use Date object for comparison)
-      exceptionDates: [new Date('2024-01-01T09:00:00Z')]
+      exceptionDates: [new Date('2024-01-01T09:00:00Z')],
     };
     const windowStart = new Date('2024-01-01T00:00:00Z');
     const windowEnd = new Date('2024-01-03T00:00:00Z');
@@ -64,7 +64,7 @@ describe('Schedule Utils', () => {
   // but occurrences fall within the window.
   it('should generate occurrences starting within the window', () => {
     const windowStart = new Date('2024-01-02T00:00:00Z'); // Start window on Jan 2nd
-    const windowEnd = new Date('2024-01-04T00:00:00Z');   // End window on Jan 4th
+    const windowEnd = new Date('2024-01-04T00:00:00Z'); // End window on Jan 4th
 
     const occurrences = generateOccurrencesInRange(mockRule, windowStart, windowEnd);
 
@@ -76,10 +76,10 @@ describe('Schedule Utils', () => {
 
   // Test case: Verifies that the generation of occurrences respects the rule's overall end date,
   // even if the window extends beyond it.
-   it('should respect the rule end date within the window', () => {
+  it('should respect the rule end date within the window', () => {
     const ruleEndingEarly = {
-        ...mockRule,
-        end: new Date('2024-01-02T10:00:00Z'), // Rule repetition series ends after Jan 2nd occurrence
+      ...mockRule,
+      end: new Date('2024-01-02T10:00:00Z'), // Rule repetition series ends after Jan 2nd occurrence
     };
     const windowStart = new Date('2024-01-01T00:00:00Z');
     const windowEnd = new Date('2024-01-04T00:00:00Z');
@@ -91,5 +91,4 @@ describe('Schedule Utils', () => {
     expect(occurrences[0].start.toISOString()).toBe('2024-01-01T09:00:00.000Z');
     expect(occurrences[1].start.toISOString()).toBe('2024-01-02T09:00:00.000Z');
   });
-
 });

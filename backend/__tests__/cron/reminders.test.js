@@ -15,18 +15,17 @@ jest.mock('../../utils/scheduleUtils');
 const mockSave = jest.fn().mockResolvedValue(true); // Mock successful save
 SentReminder.prototype.save = mockSave;
 
-
 describe('Reminder Cron Job Logic', () => {
   // --- MOCK SETUP FOR find().populate() ---
   // This setup mocks the Mongoose chained call: Schedule.find().populate()
   const mockPopulate = jest.fn(); // Mock for the .populate() method
-  const mockFind = jest.fn(() => ({ // Mock for Schedule.find()
-      populate: mockPopulate // .find() returns an object with a mock .populate
+  const mockFind = jest.fn(() => ({
+    // Mock for Schedule.find()
+    populate: mockPopulate, // .find() returns an object with a mock .populate
   }));
   // Assign the mock .find() to the Schedule mock before tests run
   Schedule.find = mockFind;
   // --- END MOCK SETUP ---
-
 
   // Resets all relevant mocks before each test case to ensure a clean state and test isolation.
   beforeEach(() => {
@@ -51,7 +50,9 @@ describe('Reminder Cron Job Logic', () => {
       repeat: false,
       exceptionDates: [],
       // Mock the .toObject() method Mongoose documents have
-      toObject: function() { return { ...this, owner: undefined }; } // Return plain object without populated fields
+      toObject: function () {
+        return { ...this, owner: undefined };
+      }, // Return plain object without populated fields
     };
 
     // Configure the mock chain for this specific test:
@@ -60,12 +61,12 @@ describe('Reminder Cron Job Logic', () => {
 
     // Mock generateOccurrencesInRange to return a specific occurrence
     const mockOccurrence = {
-        ruleId: 'schedule-123',
-        ownerId: 'user-abc', // Ensure ownerId is present
-        title: 'Test Event',
-        start: new Date('2024-01-10T10:15:00Z'), // Example time within window
-        end: new Date('2024-01-10T11:15:00Z'),
-        ownerEmail: 'test@example.com' // Email added back by the job logic
+      ruleId: 'schedule-123',
+      ownerId: 'user-abc', // Ensure ownerId is present
+      title: 'Test Event',
+      start: new Date('2024-01-10T10:15:00Z'), // Example time within window
+      end: new Date('2024-01-10T11:15:00Z'),
+      ownerEmail: 'test@example.com', // Email added back by the job logic
     };
     generateOccurrencesInRange.mockReturnValue([mockOccurrence]);
 
@@ -87,9 +88,9 @@ describe('Reminder Cron Job Logic', () => {
     // Check if email was sent
     expect(sendReminderEmail).toHaveBeenCalledTimes(1);
     expect(sendReminderEmail).toHaveBeenCalledWith(
-        'test@example.com',
-        'Test Event',
-        mockOccurrence.start // Check it passes the Date object
+      'test@example.com',
+      'Test Event',
+      mockOccurrence.start, // Check it passes the Date object
     );
 
     // Check that the save method on the SentReminder instance was called
@@ -108,7 +109,9 @@ describe('Reminder Cron Job Logic', () => {
       repeat: true,
       repeatType: 'daily',
       exceptionDates: [],
-      toObject: function() { return { ...this, owner: undefined }; }
+      toObject: function () {
+        return { ...this, owner: undefined };
+      },
     };
 
     // Configure the mock chain for this test
@@ -116,17 +119,17 @@ describe('Reminder Cron Job Logic', () => {
 
     // Mock generateOccurrencesInRange
     const mockOccurrence = {
-        ruleId: 'schedule-456',
-        ownerId: 'user-def',
-        title: 'Recurring Event',
-        start: new Date('2024-01-11T14:20:00Z'), // Example time within window
-        end: new Date('2024-01-11T15:20:00Z'),
-        ownerEmail: 'another@example.com'
+      ruleId: 'schedule-456',
+      ownerId: 'user-def',
+      title: 'Recurring Event',
+      start: new Date('2024-01-11T14:20:00Z'), // Example time within window
+      end: new Date('2024-01-11T15:20:00Z'),
+      ownerEmail: 'another@example.com',
     };
     generateOccurrencesInRange.mockReturnValue([mockOccurrence]);
 
     // Mock SentReminder.findOne to simulate reminder WAS found (return a truthy object)
-    SentReminder.findOne.mockResolvedValue({ reminderKey: 'some_key', /* other fields */ });
+    SentReminder.findOne.mockResolvedValue({ reminderKey: 'some_key' /* other fields */ });
 
     // 2. Act: Directly call the job logic function
     await runReminderCheckJob();
@@ -145,4 +148,3 @@ describe('Reminder Cron Job Logic', () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 });
-

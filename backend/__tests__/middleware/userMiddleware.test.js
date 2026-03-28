@@ -8,7 +8,7 @@ const { createRequest, createResponse } = require('node-mocks-http');
 jest.mock('jsonwebtoken');
 // Mock the JWT secret configuration to ensure a consistent secret is used for testing
 jest.mock('../../config/jwtSecret', () => ({
-  secret: 'test-secret-key' // Use a consistent secret for testing
+  secret: 'test-secret-key', // Use a consistent secret for testing
 }));
 
 describe('User Middleware', () => {
@@ -115,4 +115,3 @@ describe('User Middleware', () => {
     expect(res._getJSONData()).toEqual({ message: 'Invalid token' });
   });
 });
-

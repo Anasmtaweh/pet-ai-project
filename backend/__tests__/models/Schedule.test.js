@@ -32,7 +32,6 @@ beforeEach(async () => {
 
 // Test suite for the Schedule Mongoose model.
 describe('Schedule Model', () => {
-
   // Helper function to generate valid data for creating a Schedule instance.
   const createValidScheduleData = () => ({
     title: 'Morning Meal',
@@ -73,7 +72,7 @@ describe('Schedule Model', () => {
       repeat: true,
       repeatType: 'weekly',
       repeatDays: ['Monday', 'Wednesday', 'Friday'],
-      exceptionDates: [new Date('2024-08-19T08:00:00Z')] // Example exception date
+      exceptionDates: [new Date('2024-08-19T08:00:00Z')], // Example exception date
     };
     const schedule = new Schedule(repeatingData);
     const savedSchedule = await schedule.save();
@@ -123,7 +122,11 @@ describe('Schedule Model', () => {
     const invalidData = { ...createValidScheduleData(), type: 'grooming' }; // 'grooming' is not in the defined enum
     const schedule = new Schedule(invalidData);
     await expect(schedule.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await schedule.save(); } catch (error) { expect(error.errors.type).toBeDefined(); }
+    try {
+      await schedule.save();
+    } catch (error) {
+      expect(error.errors.type).toBeDefined();
+    }
   });
 
   it('should fail to save with invalid repeatType when repeat is true', async () => {
@@ -131,7 +134,11 @@ describe('Schedule Model', () => {
     const invalidData = { ...createValidScheduleData(), repeat: true, repeatType: 'monthly' }; // 'monthly' is not in the defined enum
     const schedule = new Schedule(invalidData);
     await expect(schedule.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await schedule.save(); } catch (error) { expect(error.errors.repeatType).toBeDefined(); }
+    try {
+      await schedule.save();
+    } catch (error) {
+      expect(error.errors.repeatType).toBeDefined();
+    }
   });
 
   // Test cases for basic date validation (Mongoose handles type casting).
@@ -139,28 +146,34 @@ describe('Schedule Model', () => {
     const invalidData = { ...createValidScheduleData(), start: 'not-a-date' };
     const schedule = new Schedule(invalidData);
     await expect(schedule.save()).rejects.toThrow(mongoose.Error.ValidationError);
-     try { await schedule.save(); } catch (error) { expect(error.errors.start).toBeDefined(); }
+    try {
+      await schedule.save();
+    } catch (error) {
+      expect(error.errors.start).toBeDefined();
+    }
   });
 
-   it('should fail if end date is an invalid date string', async () => {
+  it('should fail if end date is an invalid date string', async () => {
     const invalidData = { ...createValidScheduleData(), end: 'invalid-date-string' };
     const schedule = new Schedule(invalidData);
     await expect(schedule.save()).rejects.toThrow(mongoose.Error.ValidationError);
-     try { await schedule.save(); } catch (error) { expect(error.errors.end).toBeDefined(); }
+    try {
+      await schedule.save();
+    } catch (error) {
+      expect(error.errors.end).toBeDefined();
+    }
   });
 
   // Test case: Mongoose, by default, does not validate if end date is after start date.
   // This test confirms that behavior unless a custom validator is added to the schema.
   it('should allow saving if end date is before start date (without a custom start < end validator)', async () => {
-     const data = {
-        ...createValidScheduleData(),
-        start: new Date('2024-08-15T10:00:00Z'),
-        end: new Date('2024-08-15T09:00:00Z'), // End date is before start date
-     };
-     const schedule = new Schedule(data);
-     // Expects save to be successful as there's no built-in Mongoose validation for this.
-     await expect(schedule.save()).resolves.toBeDefined();
+    const data = {
+      ...createValidScheduleData(),
+      start: new Date('2024-08-15T10:00:00Z'),
+      end: new Date('2024-08-15T09:00:00Z'), // End date is before start date
+    };
+    const schedule = new Schedule(data);
+    // Expects save to be successful as there's no built-in Mongoose validation for this.
+    await expect(schedule.save()).resolves.toBeDefined();
   });
-
 });
-

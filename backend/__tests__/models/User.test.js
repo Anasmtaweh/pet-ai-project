@@ -32,7 +32,6 @@ beforeEach(async () => {
 
 // Test suite for the User Mongoose model.
 describe('User Model', () => {
-
   // Helper function to generate valid data for creating a User instance.
   // Allows a suffix for email to easily create unique emails for certain tests.
   const createValidUserData = (emailSuffix = '') => ({
@@ -104,7 +103,11 @@ describe('User Model', () => {
       // Expect the save operation to throw a Mongoose ValidationError.
       await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
       // Optionally, verify that the error object specifically mentions the missing field.
-      try { await user.save(); } catch (error) { expect(error.errors[field]).toBeDefined(); }
+      try {
+        await user.save();
+      } catch (error) {
+        expect(error.errors[field]).toBeDefined();
+      }
     });
   });
 
@@ -122,15 +125,24 @@ describe('User Model', () => {
     await expect(user2.save()).rejects.toThrow(/duplicate key error/i);
   });
 
-
   // Test case: Verifies email format validation against a list of invalid email strings.
   it('should fail to save with invalid email format', async () => {
-    const invalidEmails = ['plainaddress', '@missinglocalpart.com', 'user@domain.', 'user@.com', 'user@domain.c'];
+    const invalidEmails = [
+      'plainaddress',
+      '@missinglocalpart.com',
+      'user@domain.',
+      'user@.com',
+      'user@domain.c',
+    ];
     for (const email of invalidEmails) {
       const invalidData = { ...createValidUserData(), email: email }; // Use a unique base email to avoid unique constraint issues
       const user = new User(invalidData);
       await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
-      try { await user.save(); } catch (error) { expect(error.errors.email).toBeDefined(); }
+      try {
+        await user.save();
+      } catch (error) {
+        expect(error.errors.email).toBeDefined();
+      }
     }
   });
 
@@ -139,7 +151,11 @@ describe('User Model', () => {
     const invalidData = { ...createValidUserData('shortpass'), password: 'Short1!' };
     const user = new User(invalidData);
     await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await user.save(); } catch (error) { expect(error.errors.password).toBeDefined(); }
+    try {
+      await user.save();
+    } catch (error) {
+      expect(error.errors.password).toBeDefined();
+    }
   });
 
   // Test case: Verifies password complexity (must contain an uppercase letter).
@@ -147,7 +163,11 @@ describe('User Model', () => {
     const invalidData = { ...createValidUserData('noupper'), password: 'nouppercase1!' };
     const user = new User(invalidData);
     await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await user.save(); } catch (error) { expect(error.errors.password).toBeDefined(); }
+    try {
+      await user.save();
+    } catch (error) {
+      expect(error.errors.password).toBeDefined();
+    }
   });
 
   // Test case: Verifies password complexity (must contain a lowercase letter).
@@ -155,7 +175,11 @@ describe('User Model', () => {
     const invalidData = { ...createValidUserData('nolower'), password: 'NOLOWERCASE1!' };
     const user = new User(invalidData);
     await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await user.save(); } catch (error) { expect(error.errors.password).toBeDefined(); }
+    try {
+      await user.save();
+    } catch (error) {
+      expect(error.errors.password).toBeDefined();
+    }
   });
 
   // Test case: Verifies password complexity (must contain a number).
@@ -163,7 +187,11 @@ describe('User Model', () => {
     const invalidData = { ...createValidUserData('nonumber'), password: 'NoNumberHere!' };
     const user = new User(invalidData);
     await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await user.save(); } catch (error) { expect(error.errors.password).toBeDefined(); }
+    try {
+      await user.save();
+    } catch (error) {
+      expect(error.errors.password).toBeDefined();
+    }
   });
 
   // Test case: Verifies password complexity (must contain a special character).
@@ -171,7 +199,11 @@ describe('User Model', () => {
     const invalidData = { ...createValidUserData('nospecial'), password: 'NoSpecial123' };
     const user = new User(invalidData);
     await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await user.save(); } catch (error) { expect(error.errors.password).toBeDefined(); }
+    try {
+      await user.save();
+    } catch (error) {
+      expect(error.errors.password).toBeDefined();
+    }
   });
 
   // Test case: Verifies age validation (minimum age of 13).
@@ -179,7 +211,11 @@ describe('User Model', () => {
     const invalidData = { ...createValidUserData('young'), age: 12 };
     const user = new User(invalidData);
     await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await user.save(); } catch (error) { expect(error.errors.age).toBeDefined(); }
+    try {
+      await user.save();
+    } catch (error) {
+      expect(error.errors.age).toBeDefined();
+    }
   });
 
   // Test case: Verifies age validation (maximum age of 120).
@@ -187,7 +223,11 @@ describe('User Model', () => {
     const invalidData = { ...createValidUserData('old'), age: 121 };
     const user = new User(invalidData);
     await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await user.save(); } catch (error) { expect(error.errors.age).toBeDefined(); }
+    try {
+      await user.save();
+    } catch (error) {
+      expect(error.errors.age).toBeDefined();
+    }
   });
 
   // Test case: Verifies that the 'role' field must be one of the predefined enum values.
@@ -196,8 +236,10 @@ describe('User Model', () => {
     const invalidData = { ...createValidUserData('invalidrole'), role: 'guest' }; // 'guest' is not in the enum
     const user = new User(invalidData);
     await expect(user.save()).rejects.toThrow(mongoose.Error.ValidationError);
-    try { await user.save(); } catch (error) { expect(error.errors.role).toBeDefined(); }
+    try {
+      await user.save();
+    } catch (error) {
+      expect(error.errors.role).toBeDefined();
+    }
   });
-
 });
-

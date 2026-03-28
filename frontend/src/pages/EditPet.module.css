@@ -1,107 +1,113 @@
 /* EditPet.module.css */
 .editPetContainer {
-    background-color: var(--secondary-color);
-    padding: var(--padding-large);
-    border-radius: var(--border-radius-medium);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-top: var(--margin-large);
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
+  background-color: var(--secondary-color);
+  padding: var(--padding-large);
+  border-radius: var(--border-radius-medium);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: var(--margin-large);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .editPetTitle {
-    color: var(--primary-color);
-    text-align: center;
-    margin-bottom: var(--margin-large);
+  color: var(--primary-color);
+  text-align: center;
+  margin-bottom: var(--margin-large);
 }
 
 .formLabel {
-    font-weight: bold;
-    color: var(--text-color);
+  font-weight: bold;
+  color: var(--text-color);
 }
 
 .formControl {
-    border-color: var(--primary-color);
-    border-radius: var(--border-radius-small);
-    padding: var(--padding-small);
-    background-color: var(--background-color); /* Good to have this explicitly */
-    /* Bootstrap Form.Group usually handles bottom margin, but you can add if needed: */
-    /* margin-bottom: 0.5rem; */
+  border-color: var(--primary-color);
+  border-radius: var(--border-radius-small);
+  padding: var(--padding-small);
+  background-color: var(--background-color); /* Good to have this explicitly */
+  /* Bootstrap Form.Group usually handles bottom margin, but you can add if needed: */
+  /* margin-bottom: 0.5rem; */
 }
 
 /* Styles for the current pet image preview */
 .currentPetImage {
-    max-width: 200px;
-    max-height: 200px;
-    border-radius: 8px; /* Or 50% for a circular preview */
-    margin-bottom: var(--margin-medium, 1rem); /* Use theme variable or fallback */
-    border: 1px solid #ddd; /* A light border for the image */
-    object-fit: cover; /* Ensures the image covers the area nicely */
-    display: block; /* Helps with centering if margin auto is used on parent */
-    margin-left: auto;
-    margin-right: auto;
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px; /* Or 50% for a circular preview */
+  margin-bottom: var(--margin-medium, 1rem); /* Use theme variable or fallback */
+  border: 1px solid #ddd; /* A light border for the image */
+  object-fit: cover; /* Ensures the image covers the area nicely */
+  display: block; /* Helps with centering if margin auto is used on parent */
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .editPetButton {
-    background-color: var(--accent-color-1);
-    border-color: var(--accent-color-1);
-    color: white; /* Ensure text is visible */
-    width: 100%;
-    padding: 0.75rem; /* Or var(--padding-medium) */
-    font-size: 1.1rem;
-    border-radius: var(--border-radius-small); /* Consistent with other buttons */
+  background-color: var(--accent-color-1);
+  border-color: var(--accent-color-1);
+  color: white; /* Ensure text is visible */
+  width: 100%;
+  padding: 0.75rem; /* Or var(--padding-medium) */
+  font-size: 1.1rem;
+  border-radius: var(--border-radius-small); /* Consistent with other buttons */
 }
 
 .editPetButton:hover {
-    background-color: #804022; /* Darker shade on hover */
-    border-color: #804022;
+  background-color: #804022; /* Darker shade on hover */
+  border-color: #804022;
 }
 
 .speciesSelection {
-    display: flex;
-    justify-content: space-around; /* Distributes space for Cat/Dog icons */
-    gap: 20px; /* Fallback if justify-content doesn't give enough space */
-    margin-top: 10px;
-    margin-bottom: var(--margin-medium, 1rem); /* Consistent spacing */
+  display: flex;
+  justify-content: space-around; /* Distributes space for Cat/Dog icons */
+  gap: 20px; /* Fallback if justify-content doesn't give enough space */
+  margin-top: 10px;
+  margin-bottom: var(--margin-medium, 1rem); /* Consistent spacing */
 }
 
 .speciesOption {
-    border: 2px solid var(--primary-color);
-    border-radius: 50%; /* For circular icon containers */
-    padding: var(--padding-medium, 10px); /* Use theme variable or fallback */
-    cursor: pointer;
-    transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
-    display: flex; /* To center icon inside */
-    align-items: center;
-    justify-content: center;
-    width: 60px;  /* Ensure a consistent size for the circle */
-    height: 60px; /* Ensure a consistent size for the circle */
+  border: 2px solid var(--primary-color);
+  border-radius: 50%; /* For circular icon containers */
+  padding: var(--padding-medium, 10px); /* Use theme variable or fallback */
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease-in-out,
+    background-color 0.2s ease-in-out;
+  display: flex; /* To center icon inside */
+  align-items: center;
+  justify-content: center;
+  width: 60px; /* Ensure a consistent size for the circle */
+  height: 60px; /* Ensure a consistent size for the circle */
 }
 
 .speciesOption:hover {
-    border-color: var(--accent-color-1);
+  border-color: var(--accent-color-1);
 }
 
-.speciesOption.selected { /* Note: .selected is applied directly to .speciesOption in JS */
-    border-color: var(--accent-color-1);
-    background-color: var(--accent-color-1-light, #e7f3ff); /* A light version of accent or a specific light blue */
+.speciesOption.selected {
+  /* Note: .selected is applied directly to .speciesOption in JS */
+  border-color: var(--accent-color-1);
+  background-color: var(
+    --accent-color-1-light,
+    #e7f3ff
+  ); /* A light version of accent or a specific light blue */
 }
 
 .speciesIcon {
-    /* width: 40px; -> Size is controlled by .speciesOption now */
-    /* height: 40px; -> Size is controlled by .speciesOption now */
-    font-size: 2.5rem; /* Adjust icon size if FaCat/FaDog are font icons */
-    color: var(--primary-color); /* Initial color for the icon */
-    /* cursor: pointer; -> Moved to .speciesOption */
-    /* transition: transform 0.2s ease-in-out; -> Can be kept if desired */
+  /* width: 40px; -> Size is controlled by .speciesOption now */
+  /* height: 40px; -> Size is controlled by .speciesOption now */
+  font-size: 2.5rem; /* Adjust icon size if FaCat/FaDog are font icons */
+  color: var(--primary-color); /* Initial color for the icon */
+  /* cursor: pointer; -> Moved to .speciesOption */
+  /* transition: transform 0.2s ease-in-out; -> Can be kept if desired */
 }
 
 .speciesOption.selected .speciesIcon {
-    color: var(--accent-color-1); /* Change icon color when selected */
+  color: var(--accent-color-1); /* Change icon color when selected */
 }
 
 /* If you want the icon itself to scale on hover of the option */
 .speciesOption:hover .speciesIcon {
-    transform: scale(1.1);
+  transform: scale(1.1);
 }
