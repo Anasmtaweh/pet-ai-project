@@ -15,6 +15,8 @@
 
 ## What is MISHTIKA?
 
+> **Note:** This project represents the original version deployed on AWS from January 2024 to May 2024. The project has since been migrated and is now hosted on Render. You can find the active Render repository here: [pet-ai-render](https://github.com/Anasmtaweh/pet-ai-render).
+
 MISHTIKA is a full-stack web application designed to assist pet owners with managing their pets' profiles, schedules, and getting AI-powered advice. It features a user-friendly React frontend and a robust Node.js/Express backend. With an integrated OpenAI-driven assistant, pet owners can get personalized care guidance, while administrators can moderate users and view system statistics.
 
 ---
@@ -23,7 +25,7 @@ MISHTIKA is a full-stack web application designed to assist pet owners with mana
 
 - **Authentication** — Secure signup, login, and robust password reset workflows using JWT.
 - **Pet Profile Management** — Add, edit, and delete detailed pet profiles, including securely storing photos on AWS S3.
-- **AI Chat Agent** — Interact with an AI assistant for pet-related queries (powered by OpenAI).
+- **AI Chat Agent** — Interact with an AI assistant for pet-related queries, including localized product recommendations tailored for users in Lebanon (powered by OpenAI).
 - **Event Scheduler** — Create, view, edit, and delete pet schedules (meals, vet visits) with recurring event support.
 - **Automated Email Reminders** — Background CRON jobs send perfectly timed email reminders for upcoming scheduled events.
 - **Secure Admin Dashboard** — Separate admin login for moderating overall platform statistics, user lists, and pet registries.
@@ -100,10 +102,10 @@ pet-ai-project/
 
 | Domain | Technology |
 |---|---|
-| **Frontend** | React (v18), React Router, React Bootstrap, Axios |
+| **Frontend** | React (v18), React Router, React Bootstrap, React Big Calendar, React Icons, Axios |
 | **Backend** | Node.js, Express.js |
 | **Database** | MongoDB, Mongoose ODM |
-| **Services** | AWS SDK (S3), OpenAI API, Nodemailer, node-cron |
+| **Services** | AWS SDK (S3), OpenAI API, Nodemailer, node-cron, Moment.js |
 | **Security** | JSON Web Tokens (JWT), Bcrypt.js |
 | **Testing** | Jest, Supertest, mongodb-memory-server |
 | **DevOps** | Docker, AWS EC2, AWS ECR, GitHub Actions |
@@ -111,6 +113,8 @@ pet-ai-project/
 ---
 
 ## Deployment & CI/CD
+
+> **Historical Note:** This AWS deployment architecture was active from January 2024 to May 2024. For the current active deployment, please see the [pet-ai-render](https://github.com/Anasmtaweh/pet-ai-render) repository.
 
 This project is configured for seamless deployment to AWS using GitHub Actions:
 - **Frontend** is hosted as a highly-available static website on AWS S3.
