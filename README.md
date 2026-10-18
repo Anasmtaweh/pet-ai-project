@@ -15,7 +15,9 @@
 
 ## What is MISHTIKA?
 
-> **Note:** This project represents the original version deployed on AWS from January 2024 to May 2024. The project has since been migrated and is now hosted on Render. You can find the active Render repository here: [pet-ai-render](https://github.com/Anasmtaweh/pet-ai-render).
+> **Note:** This project represents the original version deployed on AWS from Feb 2025 to May 2025 (LIU senior project). The project has since been migrated and is now hosted on Render. You can find the active Render repository here: [pet-ai-render](https://github.com/Anasmtaweh/pet-ai-render).
+>
+> **Status:** The AWS deployment (EC2, S3, ECR, custom domain) was decommissioned after the senior project; CI will fail on push because the secrets and infrastructure no longer exist.
 
 MISHTIKA is a full-stack web application designed to assist pet owners with managing their pets' profiles, schedules, and getting AI-powered advice. It features a user-friendly React frontend and a robust Node.js/Express backend. With an integrated OpenAI-driven assistant, pet owners can get personalized care guidance, while administrators can moderate users and view system statistics.
 
@@ -114,7 +116,7 @@ pet-ai-project/
 
 ## Deployment & CI/CD
 
-> **Historical Note:** This AWS deployment architecture was active from January 2024 to May 2024. For the current active deployment, please see the [pet-ai-render](https://github.com/Anasmtaweh/pet-ai-render) repository.
+> **Historical Note:** This AWS deployment architecture was active from Feb 2025 to May 2025 (LIU senior project). For the current active deployment, please see the [pet-ai-render](https://github.com/Anasmtaweh/pet-ai-render) repository.
 
 This project is configured for seamless deployment to AWS using GitHub Actions:
 - **Frontend** is hosted as a highly-available static website on AWS S3.

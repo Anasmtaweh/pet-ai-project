@@ -58,7 +58,7 @@ jobs:
     name: Build and Deploy Backend
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       id-token: write
@@ -90,8 +90,8 @@ jobs:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
-          host: 51.21.213.59
-          port: 2222
+          host: ${{ secrets.EC2_HOST }}
+          port: ${{ secrets.EC2_SSH_PORT }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           envs: ECR_REGISTRY, ECR_REPOSITORY, AWS_REGION
