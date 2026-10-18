@@ -46,3 +46,6 @@ coverage/
 # Misc
 .eslintcache
 CV_PROJECT_DETAILS.md
+.lokr/
+data/
+lokr_eval_report.json
