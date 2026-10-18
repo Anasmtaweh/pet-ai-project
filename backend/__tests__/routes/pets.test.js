@@ -1,5 +1,12 @@
 // Test suite for the /pets routes, covering pet creation, retrieval, update, and deletion.
 
+// Set JWT_SECRET before any imports that depend on it (config/jwtSecret.js will crash without it).
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-from-pets-test';
+process.env.AWS_REGION = 'us-east-1';
+process.env.AWS_S3_BUCKET_NAME = 'test-bucket';
+process.env.AWS_ACCESS_KEY_ID = 'testAccessKeyId';
+process.env.AWS_SECRET_ACCESS_KEY = 'testSecretAccessKey';
+
 // Mock s3Utils BEFORE other imports that might use it.
 // This ensures that any module importing s3Utils gets the mocked version.
 const mockUploadUrl =
@@ -12,16 +19,24 @@ jest.mock('../../utils/s3Utils', () => ({
 
 const request = require('supertest');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const { app } = require('../../server'); // Import app from server.js
 const User = require('../../models/User');
 const Pet = require('../../models/Pet');
 const RecentActivity = require('../../models/RecentActivity');
+const jwtSecret = require('../../config/jwtSecret');
 const { uploadFileToS3, deleteFileFromS3 } = require('../../utils/s3Utils'); // Import the mocks
 
 let mongoServer;
 let testUser;
 let testUserId;
+let authToken; // JWT token for authenticated requests
+
+// Helper: creates a valid Bearer token for the test user.
+function generateTestToken(userId) {
+  return jwt.sign({ id: userId, role: 'user' }, jwtSecret.secret, { expiresIn: '1h' });
+}
 
 // Setup for the test environment: runs once before all tests in this file.
 beforeAll(async () => {
@@ -63,6 +78,9 @@ beforeEach(async () => {
   });
   await testUser.save();
   testUserId = testUser._id.toString();
+
+  // Generate a valid JWT for authenticated requests.
+  authToken = generateTestToken(testUserId);
 });
 
 // Test suite for all pet-related routes under /pets.
@@ -90,6 +108,7 @@ describe('Pet Routes', () => {
     it('should add a new pet with a picture', async () => {
       const response = await request(app)
         .post('/pets/add')
+        .set('Authorization', `Bearer ${authToken}`)
         .field('name', validPetData.name)
         .field('ageYears', validPetData.ageYears)
         .field('ageMonths', validPetData.ageMonths)
@@ -134,6 +153,7 @@ describe('Pet Routes', () => {
     it('should add a new pet without a picture', async () => {
       const response = await request(app)
         .post('/pets/add')
+        .set('Authorization', `Bearer ${authToken}`)
         .field('name', validPetData.name)
         .field('ageYears', validPetData.ageYears)
         .field('ageMonths', validPetData.ageMonths)
@@ -169,6 +189,7 @@ describe('Pet Routes', () => {
     it('should return 400 for missing required fields', async () => {
       const response = await request(app)
         .post('/pets/add')
+        .set('Authorization', `Bearer ${authToken}`)
         .field('name', 'Buddy')
         // Missing species, gender, breed, owner etc.
         .field('ageYears', '1')
@@ -185,6 +206,7 @@ describe('Pet Routes', () => {
     it('should return 400 for invalid numeric fields', async () => {
       const response = await request(app)
         .post('/pets/add')
+        .set('Authorization', `Bearer ${authToken}`)
         .field('name', validPetData.name)
         .field('ageYears', '-1') // Invalid age.
         .field('ageMonths', '6')
@@ -202,6 +224,7 @@ describe('Pet Routes', () => {
     it('should return 400 for invalid enum fields (gender)', async () => {
       const response = await request(app)
         .post('/pets/add')
+        .set('Authorization', `Bearer ${authToken}`)
         .field('name', validPetData.name)
         .field('ageYears', validPetData.ageYears)
         .field('ageMonths', validPetData.ageMonths)
@@ -220,6 +243,7 @@ describe('Pet Routes', () => {
       const nonExistentOwnerId = new mongoose.Types.ObjectId().toString();
       const response = await request(app)
         .post('/pets/add')
+        .set('Authorization', `Bearer ${authToken}`)
         .field('name', validPetData.name)
         .field('ageYears', validPetData.ageYears)
         .field('ageMonths', validPetData.ageMonths)
@@ -237,6 +261,7 @@ describe('Pet Routes', () => {
     it('should return 400 for invalid file type', async () => {
       const response = await request(app)
         .post('/pets/add')
+        .set('Authorization', `Bearer ${authToken}`)
         .field('name', validPetData.name)
         .field('ageYears', validPetData.ageYears)
         .field('ageMonths', validPetData.ageMonths)
@@ -259,6 +284,7 @@ describe('Pet Routes', () => {
 
       const response = await request(app)
         .post('/pets/add')
+        .set('Authorization', `Bearer ${authToken}`)
         .field('name', validPetData.name)
         .field('ageYears', validPetData.ageYears)
         .field('ageMonths', validPetData.ageMonths)
@@ -276,6 +302,23 @@ describe('Pet Routes', () => {
       // Verify that the pet was NOT created in the database if S3 upload failed.
       const pets = await Pet.find({ name: validPetData.name });
       expect(pets.length).toBe(0);
+    });
+
+    // Test case: Verifies that unauthenticated requests are rejected with 401.
+    it('should return 401 if no Authorization header is provided', async () => {
+      const response = await request(app)
+        .post('/pets/add')
+        .field('name', validPetData.name)
+        .field('ageYears', validPetData.ageYears)
+        .field('ageMonths', validPetData.ageMonths)
+        .field('weight', validPetData.weight)
+        .field('species', validPetData.species)
+        .field('gender', validPetData.gender)
+        .field('breed', validPetData.breed)
+        .field('owner', validPetData.owner);
+
+      expect(response.statusCode).toBe(401);
+      expect(response.body.message).toMatch(/Authorization token is required/i);
     });
   });
 
@@ -308,7 +351,9 @@ describe('Pet Routes', () => {
 
     // Test case: Verifies that all pets belonging to a specific owner are returned.
     it('should return all pets for a valid owner ID', async () => {
-      const response = await request(app).get(`/pets/owner/${testUserId}`);
+      const response = await request(app)
+        .get(`/pets/owner/${testUserId}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.statusCode).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -321,10 +366,20 @@ describe('Pet Routes', () => {
     // Test case: Verifies that the API returns 404 if no pets are found for the specified owner.
     it('should return 404 if no pets found for the owner', async () => {
       const otherUserId = new mongoose.Types.ObjectId().toString(); // A different, valid ObjectId.
-      const response = await request(app).get(`/pets/owner/${otherUserId}`);
+      const response = await request(app)
+        .get(`/pets/owner/${otherUserId}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.statusCode).toBe(404);
       expect(response.body.message).toBe('No pets found for this user');
+    });
+
+    // Test case: Verifies that unauthenticated requests are rejected with 401.
+    it('should return 401 if no Authorization header is provided', async () => {
+      const response = await request(app).get(`/pets/owner/${testUserId}`);
+
+      expect(response.statusCode).toBe(401);
+      expect(response.body.message).toMatch(/Authorization token is required/i);
     });
   });
 
@@ -360,7 +415,9 @@ describe('Pet Routes', () => {
         owner: otherUser._id,
       });
 
-      const response = await request(app).get('/pets/');
+      const response = await request(app)
+        .get('/pets/')
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.statusCode).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
@@ -369,9 +426,18 @@ describe('Pet Routes', () => {
 
     // Test case: Verifies that the API returns 404 if no pets exist in the database.
     it('should return 404 if no pets exist', async () => {
-      const response = await request(app).get('/pets/');
+      const response = await request(app)
+        .get('/pets/')
+        .set('Authorization', `Bearer ${authToken}`);
       expect(response.statusCode).toBe(404);
       expect(response.body.message).toBe('No pets found');
+    });
+
+    // Test case: Verifies that unauthenticated requests are rejected with 401.
+    it('should return 401 if no Authorization header is provided', async () => {
+      const response = await request(app).get('/pets/');
+      expect(response.statusCode).toBe(401);
+      expect(response.body.message).toMatch(/Authorization token is required/i);
     });
   });
 
@@ -394,7 +460,9 @@ describe('Pet Routes', () => {
 
     // Test case: Verifies that a specific pet is returned by its ID.
     it('should return a specific pet by ID', async () => {
-      const response = await request(app).get(`/pets/${testPet._id}`);
+      const response = await request(app)
+        .get(`/pets/${testPet._id}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.statusCode).toBe(200);
       expect(response.body._id).toBe(testPet._id.toString());
@@ -404,10 +472,20 @@ describe('Pet Routes', () => {
     // Test case: Verifies that the API returns 404 if the pet ID does not exist.
     it('should return 404 if pet ID does not exist', async () => {
       const invalidId = new mongoose.Types.ObjectId().toString(); // A valid but non-existent ObjectId.
-      const response = await request(app).get(`/pets/${invalidId}`);
+      const response = await request(app)
+        .get(`/pets/${invalidId}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.statusCode).toBe(404);
       expect(response.body.message).toBe('Pet not found');
+    });
+
+    // Test case: Verifies that unauthenticated requests are rejected with 401.
+    it('should return 401 if no Authorization header is provided', async () => {
+      const response = await request(app).get(`/pets/${testPet._id}`);
+
+      expect(response.statusCode).toBe(401);
+      expect(response.body.message).toMatch(/Authorization token is required/i);
     });
   });
 
@@ -431,7 +509,9 @@ describe('Pet Routes', () => {
 
     // Test case: Verifies that a pet and its associated S3 picture are deleted.
     it('should delete a pet and its S3 picture', async () => {
-      const response = await request(app).delete(`/pets/${petToDelete._id}`);
+      const response = await request(app)
+        .delete(`/pets/${petToDelete._id}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.statusCode).toBe(200);
       expect(response.body.message).toBe('Pet and associated pictures deleted');
@@ -466,7 +546,9 @@ describe('Pet Routes', () => {
         breed: 'Poodle',
         owner: testUserId,
       });
-      const response = await request(app).delete(`/pets/${petNoPic._id}`);
+      const response = await request(app)
+        .delete(`/pets/${petNoPic._id}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.statusCode).toBe(200);
       expect(response.body.message).toBe('Pet and associated pictures deleted');
@@ -477,7 +559,9 @@ describe('Pet Routes', () => {
     // Test case: Verifies that the API returns 404 if the pet ID for deletion does not exist.
     it('should return 404 if pet ID does not exist', async () => {
       const invalidId = new mongoose.Types.ObjectId().toString();
-      const response = await request(app).delete(`/pets/${invalidId}`);
+      const response = await request(app)
+        .delete(`/pets/${invalidId}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.statusCode).toBe(404);
       expect(response.body.message).toBe('Pet not found');
@@ -489,7 +573,9 @@ describe('Pet Routes', () => {
       // Configure the S3 delete mock to simulate a failure.
       deleteFileFromS3.mockRejectedValueOnce(new Error('S3 Delete Failed'));
 
-      const response = await request(app).delete(`/pets/${petToDelete._id}`);
+      const response = await request(app)
+        .delete(`/pets/${petToDelete._id}`)
+        .set('Authorization', `Bearer ${authToken}`);
 
       // The route is designed to catch S3 errors and proceed with DB deletion, so expect 200.
       expect(response.statusCode).toBe(200);
@@ -500,6 +586,14 @@ describe('Pet Routes', () => {
 
       // Verify that S3 deletion was attempted.
       expect(deleteFileFromS3).toHaveBeenCalledTimes(1);
+    });
+
+    // Test case: Verifies that unauthenticated requests are rejected with 401.
+    it('should return 401 if no Authorization header is provided', async () => {
+      const response = await request(app).delete(`/pets/${petToDelete._id}`);
+
+      expect(response.statusCode).toBe(401);
+      expect(response.body.message).toMatch(/Authorization token is required/i);
     });
   });
 
@@ -527,7 +621,10 @@ describe('Pet Routes', () => {
         weight: '13.5', // Sent as string, simulating form data.
         medicalInfo: 'Now on allergy meds',
       };
-      const response = await request(app).put(`/pets/${petToUpdate._id}`).send(updates);
+      const response = await request(app)
+        .put(`/pets/${petToUpdate._id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updates);
 
       expect(response.statusCode).toBe(200);
       expect(response.body._id).toBe(petToUpdate._id.toString());
@@ -545,7 +642,10 @@ describe('Pet Routes', () => {
     it('should return 404 if pet ID does not exist', async () => {
       const invalidId = new mongoose.Types.ObjectId().toString();
       const updates = { name: 'Ghost Pet' };
-      const response = await request(app).put(`/pets/${invalidId}`).send(updates);
+      const response = await request(app)
+        .put(`/pets/${invalidId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updates);
 
       expect(response.statusCode).toBe(404);
       expect(response.body.message).toBe('Pet not found');
@@ -554,7 +654,10 @@ describe('Pet Routes', () => {
     // Test case: Verifies that the API returns 400 for invalid update data (e.g., negative weight).
     it('should return 400 for invalid update data (e.g., negative weight)', async () => {
       const updates = { weight: '-5' };
-      const response = await request(app).put(`/pets/${petToUpdate._id}`).send(updates);
+      const response = await request(app)
+        .put(`/pets/${petToUpdate._id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updates);
 
       expect(response.statusCode).toBe(400);
       // Check for the specific error message from the route's custom validation.
@@ -564,7 +667,10 @@ describe('Pet Routes', () => {
     // Test case: Verifies that the API returns 400 for invalid enum updates (e.g., species).
     it('should return 400 for invalid enum update (e.g., species)', async () => {
       const updates = { species: 'Fish' }; // Invalid species.
-      const response = await request(app).put(`/pets/${petToUpdate._id}`).send(updates);
+      const response = await request(app)
+        .put(`/pets/${petToUpdate._id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updates);
 
       expect(response.statusCode).toBe(400);
       // Check for the specific error message from the route's custom validation.
@@ -577,7 +683,10 @@ describe('Pet Routes', () => {
         name: 'Buddy Updated Again',
         pictures: ['http://new-hacked-url.com/pic.jpg'], // Attempt to update pictures array.
       };
-      const response = await request(app).put(`/pets/${petToUpdate._id}`).send(updates);
+      const response = await request(app)
+        .put(`/pets/${petToUpdate._id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updates);
 
       expect(response.statusCode).toBe(200);
       expect(response.body.name).toBe(updates.name);
@@ -586,6 +695,17 @@ describe('Pet Routes', () => {
       // Verify that the pictures array in the database is also unchanged.
       const dbPet = await Pet.findById(petToUpdate._id);
       expect(dbPet.pictures).toEqual([]);
+    });
+
+    // Test case: Verifies that unauthenticated requests are rejected with 401.
+    it('should return 401 if no Authorization header is provided', async () => {
+      const updates = { name: 'Hacked Name' };
+      const response = await request(app)
+        .put(`/pets/${petToUpdate._id}`)
+        .send(updates);
+
+      expect(response.statusCode).toBe(401);
+      expect(response.body.message).toMatch(/Authorization token is required/i);
     });
   });
 });

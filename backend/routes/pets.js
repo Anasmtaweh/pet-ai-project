@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const userMiddleware = require('../middleware/userMiddleware');
 const mongoose = require('mongoose');
+
+// Require authentication for all pet routes.
+// userMiddleware verifies the JWT and sets req.user.
+router.use(userMiddleware);
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');

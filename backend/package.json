@@ -16,6 +16,7 @@
     "crypto": "^1.0.1",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "moment": "^2.30.1",
     "moment-timezone": "^0.5.48",
@@ -25,8 +26,7 @@
     "nodemailer": "^7.0.11",
     "openai": "^4.90.0",
     "sharp": "^0.34.1",
-    "uuid": "^11.1.0",
-    "express-rate-limit": "^8.1.0"
+    "uuid": "^11.1.0"
   },
   "packageManager": "yarn@4.7.0+sha512.5a0afa1d4c1d844b3447ee3319633797bcd6385d9a44be07993ae52ff4facabccafb4af5dcd1c2f9a94ac113e5e9ff56f6130431905884414229e284e37bb7c9",
   "resolutions": {
