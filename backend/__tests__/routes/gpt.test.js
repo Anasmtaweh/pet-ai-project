@@ -2,4 +2,5 @@
 
 describe('User Model Tests', () => {
   // Note: The describe block name should be updated to reflect GPT route tests.
+  test.todo('Implement tests for GPT routes');
 });

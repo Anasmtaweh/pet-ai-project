@@ -5,6 +5,8 @@ jest.mock('../../utils/s3Utils', () => ({
   deleteFromS3: jest.fn().mockResolvedValue({}),
 }));
 
+jest.mock('express-rate-limit', () => () => (req, res, next) => next());
+
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');

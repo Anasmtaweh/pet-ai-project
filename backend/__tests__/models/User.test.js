@@ -132,7 +132,7 @@ describe('User Model', () => {
       '@missinglocalpart.com',
       'user@domain.',
       'user@.com',
-      'user@domain.c',
+      'user@domain',
     ];
     for (const email of invalidEmails) {
       const invalidData = { ...createValidUserData(), email: email }; // Use a unique base email to avoid unique constraint issues

@@ -8,6 +8,16 @@ process.env.AWS_S3_BUCKET_NAME = 'test-bucket';
 process.env.AWS_ACCESS_KEY_ID = 'testAccessKeyId';
 process.env.AWS_SECRET_ACCESS_KEY = 'testSecretAccessKey';
 
+const mockCreatedLimiters = [];
+jest.mock('express-rate-limit', () => {
+  const actualRateLimit = jest.requireActual('express-rate-limit');
+  return (options) => {
+    const limiter = actualRateLimit(options);
+    mockCreatedLimiters.push(limiter);
+    return limiter;
+  };
+});
+
 const request = require('supertest');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -49,6 +59,10 @@ beforeEach(async () => {
   // Clear relevant collections before each test to ensure test isolation and a clean state.
   await User.deleteMany({});
   await PasswordResetToken.deleteMany({});
+  mockCreatedLimiters.forEach((limiter) => {
+    limiter.resetKey('::ffff:127.0.0.1');
+    limiter.resetKey('127.0.0.1');
+  });
   // Clear any spies or mocks to prevent interference between tests.
   jest.clearAllMocks();
 });
