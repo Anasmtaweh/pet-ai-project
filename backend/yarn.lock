@@ -1817,7 +1817,7 @@ __metadata:
     multer: "npm:^2.0.2"
     node-cron: "npm:^3.0.3"
     node-mocks-http: "npm:^1.17.0"
-    nodemailer: "npm:^7.0.11"
+    nodemailer: "npm:^10.1.4"
     openai: "npm:^4.90.0"
     sharp: "npm:^0.34.1"
     supertest: "npm:^7.1.0"
@@ -4443,10 +4443,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nodemailer@npm:^7.0.11":
-  version: 7.0.13
-  resolution: "nodemailer@npm:7.0.13"
-  checksum: 10c0/b26aa5b9fa4a033bbc1e1c16ef75ee2a9c8641fd290c00a8361d6a251b3c1b8bad545a23efa627f59cb266340a448891ea8aa49d8a9307c767b8505219d95079
+"nodemailer@npm:^10.1.4":
+  version: 10.1.4
+  resolution: "nodemailer@npm:10.1.4"
+  checksum: 10c0/fa60d4757c876b88ded425530b0f9c041bf793f7369fa673d3eb6df24f47ea67128566bca10ed8b81ecca17ec682d7491bcc032d328e6ca878d11c91472ab3d2
   languageName: node
   linkType: hard
 
